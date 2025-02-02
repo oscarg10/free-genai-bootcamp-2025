@@ -1,4 +1,4 @@
-##Functional Requirements
+## Functional Requirements
 
 The company ideantified weaknesses with the current language learning platforms. Therefore, the decided to leverage the power of GenAI to put together an application that will improve the quality and user experience of an user when learning a new language. 
 
