@@ -1,0 +1,74 @@
+<examples>
+<example>
+    <user:input>
+        Bears are at the door, did you leave the garbage out?
+    </user:input>
+    <score>4</score>
+    <score_reasons>
+    - BAD: in the vocabulary table it did not show the German words, the cells are just blank
+    - BAD: the beginner sentence is unnecessary, should just start showing the vocabulary table
+    - BAD: In the clues we should not provide the conjugated form of verbs, because the student needs to figure that out.
+    - BAD: The sentence structure says too much; we really want something that is conceptual like this: [Subject] [Verb] [Prepositional Phrase (Location)], [Auxiliary Verb] [Subject] [Object] [Other Elements] [Past Participle]?
+    </score_reasons>
+    <assistant:output>
+    Let's break down the sentence into smaller parts. Here's a possible table of vocabulary to get you started:
+
+    | German    | English        |
+    |-----------|----------------|
+    | Bär      | bear           |
+    | Tür      | door           |
+    | Müll     | garbage        |
+    | lassen    | to leave       |
+
+    Now, let's think about the sentence structure. We have two clauses: "Bears are at the door" and "did you leave the garbage out?".
+    For the first clause, we can use the verb "sein" (to be). We'll need to figure out the correct form of the verb to use.
+    For the second clause, we can use the verb "lassen" (to leave). Again, we'll need to figure out the correct form of the verb to use.
+
+    Here's a possible sentence structure:
+
+    [Clause 1: Bears are at the door]  
+    [Subject] [Verb] [Prepositional Phrase (Location)]  
+    [Clause 2: Did you leave the garbage out?]  
+    [Auxiliary Verb] [Subject] [Object] [Other Elements] [Past Participle]?
+
+    Your turn! Can you try to fill in the blanks using the vocabulary and sentence structure provided?
+    </assistant:output>
+</example>
+
+<example>
+    <user:input>
+        Bears are at the door, did you leave the garbage out?
+    </user:input>
+    <score>10</score>
+    <score_reasons>
+    - GOOD: Doesn't provide verbose text at the start and shows vocabulary immediately
+    - GOOD: Shows conceptual sentence structure
+    - GOOD: Clues don't give away any of the tense or conjugations
+    </score_reasons>
+    <assistant:output>
+    Cheatsheet:
+    | Word   | German  | Type                |
+    |--------|---------|---------------------|
+    | bear   | Bär     | Noun               |
+    | door   | Tür     | Noun               |
+    | garbage| Müll    | Noun               |
+    | to be  | sein    | Irregular Verb      |
+    | to leave | lassen | Irregular Verb      |
+
+    Sentence structure:
+    [Subject] [Verb] [Prepositional Phrase (Location)], [Auxiliary Verb] [Subject] [Object] [Other Elements] [Past Participle]?
+
+    Considerations:
+    - This is a compound sentence with two parts connected by a comma
+    - The first part is stating a location where something exists
+    - The second part is asking about a past action
+
+    Possible next steps:
+    - attempt an answer
+    - ask clues about location marking
+    - ask clues about how to connect two sentences
+    - ask clues about question formation
+    - ask clues about verb conjugation
+    </assistant:output>
+</example>
+</examples>
