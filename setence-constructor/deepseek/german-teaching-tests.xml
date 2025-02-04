@@ -1,0 +1,247 @@
+<test-cases>
+    <!-- 1.1 Simple Sentences -->
+    <case id="simple-1">
+        <english>I eat bread.</english>
+        <vocabulary>
+            <word>
+                <german>essen</german>
+                <english>eat</english>
+            </word>
+            <word>
+                <german>Brot</german>
+                <english>bread</english>
+            </word>
+        </vocabulary>
+        <structure>[Subject] [Verb] [Object].</structure>
+        <considerations>
+            - Basic sentence with subject, verb, and object
+            - Present tense form
+            - Verb is in second position (V2 rule in German)
+        </considerations>
+    </case>
+    <case id="simple-2">
+        <english>The book is red.</english>
+        <vocabulary>
+            <word>
+                <german>Buch</german>
+                <english>book</english>
+            </word>
+            <word>
+                <german>rot</german>
+                <english>red</english>
+            </word>
+        </vocabulary>
+        <structure>[Subject] [Verb] [Adjective].</structure>
+        <considerations>
+            - Simple descriptor sentence
+            - Uses "sein" (to be) as the verb
+            - Adjective agrees with the subject in gender and number
+        </considerations>
+    </case>
+
+    <!-- 1.2 Compound Sentences -->
+    <case id="compound-1">
+        <english>I eat bread and drink water.</english>
+        <vocabulary>
+            <word>
+                <german>essen</german>
+                <english>eat</english>
+            </word>
+            <word>
+                <german>Brot</german>
+                <english>bread</english>
+            </word>
+            <word>
+                <german>trinken</german>
+                <english>drink</english>
+            </word>
+            <word>
+                <german>Wasser</german>
+                <english>water</english>
+            </word>
+        </vocabulary>
+        <structure>[Subject] [Verb1] [Object1] und [Verb2] [Object2].</structure>
+        <considerations>
+            - Compound sentence with two actions
+            - Subject shared between clauses
+            - Verbs are conjugated and placed in the correct position
+        </considerations>
+    </case>
+
+    <!-- 1.3 Complex Sentences -->
+    <case id="complex-1">
+        <english>Because it's hot, I drink water.</english>
+        <vocabulary>
+            <word>
+                <german>heiß</german>
+                <english>hot</english>
+            </word>
+            <word>
+                <german>trinken</german>
+                <english>drink</english>
+            </word>
+            <word>
+                <german>Wasser</german>
+                <english>water</english>
+            </word>
+        </vocabulary>
+        <structure>[Reason] [Subject] [Verb] [Object].</structure>
+        <considerations>
+            - Cause and effect relationship
+            - Uses "weil" (because) to introduce the reason clause
+            - Verb is placed at the end in the subordinate clause
+        </considerations>
+    </case>
+
+    <!-- 2. Vocabulary Edge Cases -->
+    <vocabulary-test>
+        <!-- 2.1 Multiple Meanings -->
+        <word>
+            <german>ziehen</german>
+            <meanings>
+                <meaning>to pull</meaning>
+                <meaning>to move (relocate)</meaning>
+                <meaning>to draw (a picture)</meaning>
+            </meanings>
+            <test-sentences>
+                <sentence>He pulls the door.</sentence>
+                <sentence>They are moving to Berlin.</sentence>
+                <sentence>She draws a picture.</sentence>
+            </test-sentences>
+        </word>
+
+        <!-- 2.2 Transitive/Intransitive Pairs -->
+        <pair>
+            <transitive>
+                <german>öffnen</german>
+                <english>to open (something)</english>
+            </transitive>
+            <intransitive>
+                <german>aufgehen</german>
+                <english>to open (by itself)</english>
+            </intransitive>
+            <test-sentences>
+                <sentence>I open the window.</sentence>
+                <sentence>The door opens.</sentence>
+            </test-sentences>
+        </pair>
+    </vocabulary-test>
+
+    <!-- 3. State Transition Tests -->
+    <transition-test>
+        <!-- 3.1 Valid Transitions -->
+        <scenario id="setup-to-attempt">
+            <initial-state>Setup</initial-state>
+            <input>Ich esse Brot.</input>
+            <expected-state>Attempt</expected-state>
+            <validation>
+                - Input contains German text
+                - No question marks
+                - Contains vocabulary from setup
+            </validation>
+        </scenario>
+        <scenario id="attempt-to-clues">
+            <initial-state>Attempt</initial-state>
+            <input>How do I use articles?</input>
+            <expected-state>Clues</expected-state>
+            <validation>
+                - Input is a question
+                - References grammar concept
+                - Related to previous attempt
+            </validation>
+        </scenario>
+
+        <!-- 3.2 Invalid Transitions -->
+        <scenario id="invalid-clues-to-setup">
+            <initial-state>Clues</initial-state>
+            <input>Can you give me the answer?</input>
+            <expected-response>
+                - Reminder that answers aren't provided
+                - Offer additional clues
+                - Encourage attempt
+            </expected-response>
+        </scenario>
+    </transition-test>
+
+    <!-- 4. Teaching Scenario Tests -->
+    <teaching-test>
+        <!-- 4.1 Common Mistakes -->
+        <scenario id="article-mistake">
+            <student-attempt>Ich esse der Brot.</student-attempt>
+            <error>Incorrect use of definite article for neuter noun</error>
+            <expected-guidance>
+                - Acknowledge attempt
+                - Explain article usage (der/die/das) without giving answer
+                - Encourage new attempt
+            </expected-guidance>
+        </scenario>
+        <scenario id="verb-conjugation-mistake">
+            <student-attempt>Ich essen Brot.</student-attempt>
+            <error>Incorrect verb conjugation</error>
+            <expected-guidance>
+                - Point out verb type (regular/irregular)
+                - Review present tense conjugation rules
+                - Encourage correction
+            </expected-guidance>
+        </scenario>
+    </teaching-test>
+
+    <!-- 5. Validation Criteria -->
+    <scoring-criteria>
+        <category name="vocabulary-table">
+            <criteria>
+                - Contains all necessary words (2 points)
+                - Correct formatting (2 points)
+                - Dictionary forms only (2 points)
+                - No article inclusion (2 points)
+                - Appropriate difficulty level (2 points)
+            </criteria>
+        </category>
+        <category name="sentence-structure">
+            <criteria>
+                - Clear bracketed format (2 points)
+                - No conjugations shown (2 points)
+                - Appropriate for level (2 points)
+                - Matches example patterns (2 points)
+                - No articles included (2 points)
+            </criteria>
+        </category>
+    </scoring-criteria>
+
+    <!-- 6. Documentation Improvements -->
+    <version-control>
+        <version number="1.0">
+            <changes>
+                - Initial test documentation
+                - Basic test cases added
+                - State transition examples
+            </changes>
+            <date>2025-01-03</date>
+        </version>
+        <planned-improvements>
+            - Add more complex sentence patterns
+            - Expand vocabulary edge cases
+            - Include cultural context tests
+            - Add error recovery scenarios
+        </planned-improvements>
+    </version-control>
+
+    <cross-references>
+        <reference id="articles">
+            <related-sections>
+                - Vocabulary Table Guidelines
+                - Common Mistakes
+                - Teaching Scenarios
+            </related-sections>
+            <purpose>Ensure consistent article handling across documentation</purpose>
+        </reference>
+        <reference id="verb-conjugation">
+            <related-sections>
+                - Sentence Structure Guidelines
+                - Teaching Scenarios
+                - Validation Criteria
+            </related-sections>
+            <purpose>Maintain consistent verb form handling</purpose>
+        </reference>
+    </cross-references>
+</test-cases>

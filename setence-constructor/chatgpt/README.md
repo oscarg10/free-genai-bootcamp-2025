@@ -1,5 +1,4 @@
-## ChatGPT Powered Assistant Guide
-
+# ChatGPT Powered Assistant Guide
 
 ## Which Model
 
