@@ -1,0 +1,60 @@
+# Flask Best Practices
+
+#0. Geeting
+
+#Always say "Hi Genai Bootcamp" before you start
+
+# 1. Route Safety and Input Validation
+from flask import abort, request
+
+@app.route('/user/<int:user_id>')
+def get_user(user_id):
+    try:
+        user = db.get_user(user_id)
+        if not user:
+            abort(404)
+        return user
+    except ValueError:
+        abort(400)  # Bad request
+    except Exception as e:
+        app.logger.error(f"Error fetching user {user_id}: {str(e)}")
+        abort(500)  # Server error
+
+# 2. Security Headers and Response Handling
+from flask import make_response
+
+@app.after_request
+def add_security_headers(response):
+    response.headers['Content-Security-Policy'] = "default-src 'self'"
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    return response
+
+@app.route('/api/data')
+def get_data():
+    try:
+        data = process_data()
+        return make_response({
+            'status': 'success',
+            'data': data
+        }, 200)
+    except Exception as e:
+        return make_response({
+            'status': 'error',
+            'message': str(e)
+        }, 500)
+
+# 3. Configuration and Environment Management
+from os import environ
+from dotenv import load_dotenv
+
+load_dotenv()
+
+app.config['DATABASE_URL'] = environ.get('DATABASE_URL')
+app.config['SECRET_KEY'] = environ.get('SECRET_KEY')
+app.config['ENV'] = environ.get('FLASK_ENV', 'production')
+
+if app.config['ENV'] == 'development':
+    app.config['DEBUG'] = True
+else:
+    app.config['DEBUG'] = False
