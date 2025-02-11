@@ -1,7 +1,9 @@
 CREATE TABLE IF NOT EXISTS words (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  kanji TEXT NOT NULL,
-  romaji TEXT NOT NULL,
+  german TEXT NOT NULL,
+  pronunciation TEXT,
   english TEXT NOT NULL,
-  parts TEXT NOT NULL  -- Store parts as JSON string
+  article TEXT,  -- der/die/das for nouns
+  word_type TEXT NOT NULL,  -- noun, verb, adjective, etc.
+  additional_info TEXT  -- Store additional info as JSON string (e.g., verb conjugations, plural forms)
 );
