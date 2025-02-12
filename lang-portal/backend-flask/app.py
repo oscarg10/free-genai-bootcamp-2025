@@ -1,5 +1,7 @@
 from flask import Flask, g
 from flask_cors import CORS
+from dotenv import load_dotenv
+import os
 
 from lib.db import Db
 
@@ -9,60 +11,40 @@ import routes.study_sessions
 import routes.dashboard
 import routes.study_activities
 
-def get_allowed_origins(app):
-    try:
-        cursor = app.db.cursor()
-        cursor.execute('SELECT url FROM study_activities')
-        urls = cursor.fetchall()
-        # Convert URLs to origins (e.g., https://example.com/app -> https://example.com)
-        origins = set()
-        for url in urls:
-            try:
-                from urllib.parse import urlparse
-                parsed = urlparse(url['url'])
-                origin = f"{parsed.scheme}://{parsed.netloc}"
-                origins.add(origin)
-            except:
-                continue
-        return list(origins) if origins else ["*"]
-    except:
-        return ["*"]  # Fallback to allow all origins if there's an error
+# Load environment variables
+load_dotenv()
 
 def create_app(test_config=None):
     app = Flask(__name__)
     
-    if test_config is None:
-        app.config.from_mapping(
-            DATABASE='words.db'
-        )
-    else:
-        app.config.update(test_config)
-    
-    # Initialize database first since we need it for CORS configuration
-    app.db = Db(database=app.config['DATABASE'])
-    
-    # Get allowed origins from study_activities table
-    allowed_origins = get_allowed_origins(app)
-    
-    # In development, add localhost to allowed origins
-    if app.debug:
-        allowed_origins.extend(["http://localhost:8080", "http://127.0.0.1:8080"])
-    
-    # Configure CORS with combined origins
-    CORS(app, resources={
-        r"/*": {
-            "origins": allowed_origins,
-            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization"]
-        }
-    })
+    # Development configuration
+    app.config.update(
+        SECRET_KEY=os.environ['SECRET_KEY'],
+        DEBUG=os.environ.get('DEBUG', 'True').lower() == 'true',
+        ENV='development'
+    )
 
-    # Close database connection
+    # Enable CORS for development
+    CORS(app, origins=os.environ.get('ALLOWED_ORIGINS', '*'))
+    
+    # Initialize database
+    app.db = Db(os.environ.get('DATABASE_URL', 'sqlite:///words.db'))
+    
     @app.teardown_appcontext
     def close_db(exception):
         app.db.close()
 
-    # load routes -----------
+    # Test config route
+    @app.route('/test-config')
+    def test_config():
+        return {
+            'environment': app.config['ENV'],
+            'debug': app.config['DEBUG'],
+            'has_secret_key': bool(app.config['SECRET_KEY']),
+            'env_vars_loaded': bool(os.environ.get('SECRET_KEY'))
+        }
+
+    # Load routes
     routes.words.load(app)
     routes.groups.load(app)
     routes.study_sessions.load(app)
@@ -74,4 +56,4 @@ def create_app(test_config=None):
 app = create_app()
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
