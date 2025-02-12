@@ -1,0 +1,91 @@
+{
+    "nouns": [
+      {
+        "german": "Haus",
+        "pronunciation": "haʊs",
+        "english": "house",
+        "article": "das",
+        "word_type": "noun",
+        "additional_info": {
+          "plural": "Häuser",
+          "gender": "neuter",
+          "declension": {
+            "nominative": {
+              "singular": "das Haus",
+              "plural": "die Häuser"
+            },
+            "accusative": {
+              "singular": "das Haus",
+              "plural": "die Häuser"
+            },
+            "dative": {
+              "singular": "dem Haus",
+              "plural": "den Häusern"
+            },
+            "genitive": {
+              "singular": "des Hauses",
+              "plural": "der Häuser"
+            }
+          }
+        }
+      },
+      {
+        "german": "Frau",
+        "pronunciation": "fʁaʊ",
+        "english": "woman",
+        "article": "die",
+        "word_type": "noun",
+        "additional_info": {
+          "plural": "Frauen",
+          "gender": "feminine",
+          "declension": {
+            "nominative": {
+              "singular": "die Frau",
+              "plural": "die Frauen"
+            },
+            "accusative": {
+              "singular": "die Frau",
+              "plural": "die Frauen"
+            },
+            "dative": {
+              "singular": "der Frau",
+              "plural": "den Frauen"
+            },
+            "genitive": {
+              "singular": "der Frau",
+              "plural": "der Frauen"
+            }
+          }
+        }
+      },
+      {
+        "german": "Mann",
+        "pronunciation": "man",
+        "english": "man",
+        "article": "der",
+        "word_type": "noun",
+        "additional_info": {
+          "plural": "Männer",
+          "gender": "masculine",
+          "declension": {
+            "nominative": {
+              "singular": "der Mann",
+              "plural": "die Männer"
+            },
+            "accusative": {
+              "singular": "den Mann",
+              "plural": "die Männer"
+            },
+            "dative": {
+              "singular": "dem Mann",
+              "plural": "den Männern"
+            },
+            "genitive": {
+              "singular": "des Mannes",
+              "plural": "der Männer"
+            }
+          }
+        }
+      }
+    ]
+  }
