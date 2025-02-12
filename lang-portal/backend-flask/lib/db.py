@@ -1,15 +1,22 @@
 import sqlite3
 import json
 from flask import g
+import os
 
 class Db:
-  def __init__(self, database='words.db'):
-    self.database = database
+  def __init__(self, database_url='sqlite:///words.db'):
+    # Extract the database path from the URL
+    if database_url.startswith('sqlite:///'):
+      self.database = database_url[10:]  # Remove 'sqlite:///'
+    else:
+      self.database = database_url
     self.connection = None
 
   def get(self):
     if 'db' not in g:
-      g.db = sqlite3.connect(self.database)
+      # Ensure we're using an absolute path
+      db_path = os.path.abspath(self.database)
+      g.db = sqlite3.connect(db_path)
       g.db.row_factory = sqlite3.Row  # Return rows as dictionaries
     return g.db
 
