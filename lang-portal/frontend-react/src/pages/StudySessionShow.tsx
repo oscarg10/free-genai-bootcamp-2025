@@ -3,7 +3,8 @@ import { useParams, Link } from 'react-router-dom'
 import { useNavigation } from '@/context/NavigationContext'
 import WordsTable from '@/components/WordsTable'
 import Pagination from '@/components/Pagination'
-import type { Word, WordSortKey } from '@/services/api'
+import type { Word } from '@/services/api'
+import type { WordSortKey } from '@/components/WordsTable'
 
 interface StudySession {
   id: number
@@ -31,7 +32,7 @@ export default function StudySessionShow() {
   const [words, setWords] = useState<Word[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
-  const [sortKey, setSortKey] = useState<WordSortKey>('kanji')
+  const [sortKey, setSortKey] = useState<WordSortKey>('german')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

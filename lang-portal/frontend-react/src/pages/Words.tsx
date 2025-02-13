@@ -4,7 +4,7 @@ import WordsTable, { WordSortKey } from '../components/WordsTable'
 
 export default function Words() {
   const [words, setWords] = useState<Word[]>([])
-  const [sortKey, setSortKey] = useState<WordSortKey>('kanji')
+  const [sortKey, setSortKey] = useState<WordSortKey>('german')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -16,9 +16,9 @@ export default function Words() {
       setIsLoading(true)
       setError(null)
       try {
-        const response = await fetchWords(currentPage, sortKey, sortDirection)
-        setWords(response.words)
-        setTotalPages(response.total_pages)
+        const response = await fetchWords(currentPage, undefined, sortKey, sortDirection)
+        setWords(response.data.words)
+        setTotalPages(response.data.pagination.total_pages)
       } catch (err) {
         setError('Failed to load words')
         console.error(err)

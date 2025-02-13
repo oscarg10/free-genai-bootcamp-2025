@@ -20,9 +20,9 @@ export default function GroupShow() {
   const { setCurrentGroup } = useNavigation()
   const [words, setWords] = useState<Word[]>([])
   const [studySessions, setStudySessions] = useState<StudySession[]>([])
-  const [wordSortKey, setWordSortKey] = useState<WordSortKey>('kanji')
+  const [wordSortKey, setWordSortKey] = useState<WordSortKey>('german')
   const [wordSortDirection, setWordSortDirection] = useState<'asc' | 'desc'>('asc')
-  const [sessionSortKey, setSessionSortKey] = useState<StudySessionSortKey>('startTime')
+  const [sessionSortKey, setSessionSortKey] = useState<StudySessionSortKey>('start_time')
   const [sessionSortDirection, setSessionSortDirection] = useState<'asc' | 'desc'>('desc')
   const [wordsPage, setWordsPage] = useState(1)
   const [sessionsPage, setSessionsPage] = useState(1)
@@ -59,7 +59,7 @@ export default function GroupShow() {
         
         setWords(wordsData.words)
         setWordsTotalPages(wordsData.total_pages)
-        setStudySessions(sessionsData.study_sessions)
+        setStudySessions(sessionsData.items)
         setSessionsTotalPages(sessionsData.total_pages)
       } catch (err) {
         setError('Failed to load group details')
