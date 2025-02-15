@@ -172,6 +172,31 @@ export async function fetchWordDetails(wordId: number): Promise<Word> {
   return response.json();
 }
 
+export async function createWord(word: {
+  german: string;
+  english: string;
+  article?: string;
+  word_type: 'noun' | 'verb' | 'adjective';
+  pronunciation?: string;
+  additional_info?: {
+    plural?: string;
+    gender?: 'masculine' | 'feminine' | 'neuter';
+    comparative?: string;
+    superlative?: string;
+  };
+  group_ids?: number[];
+}): Promise<Word> {
+  const response = await fetch(`${API_BASE_URL}/words`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(word),
+  });
+  if (!response.ok) throw new Error('Failed to create word');
+  return response.json();
+}
+
 // Study Session API
 export async function createStudySession(
   groupId: number,
