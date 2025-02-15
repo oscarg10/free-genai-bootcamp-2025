@@ -118,6 +118,89 @@ def load(app):
                 'message': f'Internal server error: {str(e)}'
             }, 500)
 
+    # Create a new word
+    @app.route('/words', methods=['POST'])
+    @cross_origin()
+    def create_word():
+        try:
+            data = request.get_json()
+            
+            # Validate required fields
+            required_fields = ['german', 'english', 'word_type']
+            for field in required_fields:
+                if field not in data:
+                    return make_response({
+                        'status': 'error',
+                        'message': f'Missing required field: {field}'
+                    }, 400)
+            
+            # Validate word type
+            valid_types = ['noun', 'verb', 'adjective']
+            if data['word_type'] not in valid_types:
+                return make_response({
+                    'status': 'error',
+                    'message': f'Invalid word type. Must be one of: {", ".join(valid_types)}'
+                }, 400)
+            
+            # Prepare additional info as JSON
+            additional_info = data.get('additional_info', {})
+            if isinstance(additional_info, dict):
+                additional_info_json = json.dumps(additional_info)
+            else:
+                additional_info_json = '{}'
+            
+            cursor = app.db.cursor()
+            cursor.execute('''
+                INSERT INTO words (german, english, pronunciation, article, word_type, additional_info)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (
+                data['german'],
+                data['english'],
+                data.get('pronunciation', ''),
+                data.get('article', ''),
+                data['word_type'],
+                additional_info_json
+            ))
+            
+            word_id = cursor.lastrowid
+            app.db.commit()
+            
+            # Return the created word
+            cursor.execute('''
+                SELECT w.id, w.german, w.pronunciation, w.english, w.article, 
+                       w.word_type, w.additional_info,
+                       COALESCE(r.correct_count, 0) AS correct_count,
+                       COALESCE(r.wrong_count, 0) AS wrong_count
+                FROM words w
+                LEFT JOIN word_reviews r ON w.id = r.word_id
+                WHERE w.id = ?
+            ''', (word_id,))
+            
+            word = cursor.fetchone()
+            word_data = {
+                'id': word[0],
+                'german': word[1],
+                'pronunciation': word[2],
+                'english': word[3],
+                'article': word[4],
+                'word_type': word[5],
+                'additional_info': json.loads(word[6]) if word[6] else {},
+                'correct_count': word[7],
+                'wrong_count': word[8]
+            }
+            
+            return make_response({
+                'status': 'success',
+                'data': word_data
+            }, 201)
+            
+        except Exception as e:
+            app.logger.error(f"Error creating word: {str(e)}")
+            return make_response({
+                'status': 'error',
+                'message': f'Failed to create word: {str(e)}'
+            }, 500)
+
     # Get word by ID
     @app.route('/words/<int:word_id>', methods=['GET'])
     @cross_origin()
