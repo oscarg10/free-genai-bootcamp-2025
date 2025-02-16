@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronUp, ChevronDown } from 'lucide-react'
+import { ChevronUp, ChevronDown, Plus } from 'lucide-react'
 import { fetchGroups, type Group } from '../services/api'
 
 type SortKey = 'name' | 'word_count'
@@ -13,6 +13,7 @@ export default function Groups() {
   const [totalPages, setTotalPages] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
 
   useEffect(() => {
     const loadGroups = async () => {
@@ -52,7 +53,16 @@ export default function Groups() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Word Groups</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Word Groups</h1>
+        <button
+          onClick={() => setIsCreateModalOpen(true)}
+          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        >
+          <Plus className="w-5 h-5 mr-2" />
+          Create Group
+        </button>
+      </div>
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-900">
