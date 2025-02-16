@@ -58,6 +58,47 @@ def load(app):
     except Exception as e:
       return jsonify({"error": str(e)}), 500
 
+  @app.route('/groups', methods=['POST'])
+  @cross_origin()
+  def create_group():
+    try:
+      data = request.get_json()
+      
+      if not data or 'name' not in data:
+        return jsonify({"error": "Group name is required"}), 400
+      
+      group_name = data['name'].strip()
+      if not group_name:
+        return jsonify({"error": "Group name cannot be empty"}), 400
+
+      # Check if a group with this name already exists
+      cursor = app.db.cursor()
+      cursor.execute('SELECT id FROM groups WHERE name = ?', (group_name,))
+      existing_group = cursor.fetchone()
+      
+      if existing_group:
+        return jsonify({"error": "A group with this name already exists"}), 409
+
+      # Create the new group
+      cursor.execute('''
+        INSERT INTO groups (name, words_count) 
+        VALUES (?, 0)
+      ''', (group_name,))
+      
+      group_id = cursor.lastrowid
+      app.db.commit()
+
+      # Return the created group
+      return jsonify({
+        "id": group_id,
+        "group_name": group_name,
+        "word_count": 0
+      }), 201
+
+    except Exception as e:
+      app.db.rollback()
+      return jsonify({"error": str(e)}), 500
+
   @app.route('/groups/<int:id>', methods=['GET'])
   @cross_origin()
   def get_group(id):
