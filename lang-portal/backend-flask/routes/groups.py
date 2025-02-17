@@ -71,7 +71,7 @@ def load(app):
       if not group_name:
         return jsonify({"error": "Group name cannot be empty"}), 400
 
-      # Check if a group with this name already exists
+      # Check if a group with this name  already exists
       cursor = app.db.cursor()
       cursor.execute('SELECT id FROM groups WHERE name = ?', (group_name,))
       existing_group = cursor.fetchone()

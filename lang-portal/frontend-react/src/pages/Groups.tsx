@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronUp, ChevronDown, Plus } from 'lucide-react'
-import { fetchGroups, type Group } from '../services/api'
+import { fetchGroups, createGroup, type Group } from '../services/api'
+import { CreateGroupModal } from '../components/CreateGroupModal'
 
 type SortKey = 'name' | 'word_count'
 
@@ -33,6 +34,20 @@ export default function Groups() {
 
     loadGroups()
   }, [currentPage, sortKey, sortDirection])
+
+  // Add the create group handler in your Groups component
+  const handleCreateGroup = async (groupName: string) => {
+    try {
+      await createGroup(groupName);
+      // Refresh the groups list
+      const response = await fetchGroups(currentPage, sortKey, sortDirection);
+      setGroups(response.groups);
+      setTotalPages(response.total_pages);
+    } catch (error) {
+      console.error('Failed to create group:', error);
+      throw error;
+    }
+  };
 
   const handleSort = (key: SortKey) => {
     if (key === sortKey) {
@@ -126,6 +141,12 @@ export default function Groups() {
           Next
         </button>
       </div>
+      
+      <CreateGroupModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onCreateGroup={handleCreateGroup}
+      />
     </div>
   )
 }

@@ -74,6 +74,23 @@ export interface WordReview {
   is_correct: boolean;
 }
 
+// API function to create a group
+export async function createGroup(groupName: string): Promise<Group> {
+  const response = await fetch(`${API_BASE_URL}/groups`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ name: groupName }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to create group');
+  }
+
+  return response.json();
+}
+
 // Dashboard types
 export interface RecentSession {
   id: number;
