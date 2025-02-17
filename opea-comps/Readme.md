@@ -14,7 +14,7 @@ ipconfig getifaddr en0
 ```
 
 
-NO_PROXY=localhost LLM_ENDPOINT_PORT=8008:11434 LLM_MODEL_ID="llama3.2:1b" 
+NO_PROXY=localhost LLM_ENDPOINT_PORT=9000:11434 LLM_MODEL_ID="llama3.2:1b" 
 host_ip=192.168.1.90 docker-compose up
 
 ### Ollama API 
@@ -25,14 +25,14 @@ https://github.com/ollama/ollama/blob/main/docs/api.md
 
 ## Download (pull) a model
 
-curl http://localhost:8008/api/pull -d '{
+curl http://localhost:9000/api/pull -d '{
   "model": "llama3.2:1b"
 }'
 
 
 ## Generate a request
 
-curl http://localhost:8008/api/generate -d '{
+curl http://localhost:9000/api/generate -d '{
   "model": "llama3.2:1b",
   "prompt": "Why is the sky blue?"
 }'
@@ -54,3 +54,7 @@ A: No, the LLM_MODEL_ID parameter is used to specify the model that the Ollama s
 Q: Will the model be downloaded in the container? does that mean the model will be deleted when the container is stopped?
 
 A: The model will download into the container, and it will not be deleted when the container is stopped. The model will be available for use in the container until it is deleted or the container is stopped. 
+
+Q: For LLM service which can txt-generation, it suggests it will only work with TGI/vLLM and all you have to do is have it running. Does TGI and vLLM have a standarized API or is there code to detect which one is running? Do we have to really use Xeon or Guadi processor? 
+
+vLLM, TGI (Text Gen Inference) are both open-source models, and they have standardized APIs. You can use any processor that supports the model, as long as it has the necessary hardware and software requirements.In theory, they should be interchamgable. 
