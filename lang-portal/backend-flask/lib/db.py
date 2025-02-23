@@ -67,12 +67,15 @@ class Db:
     self.get().commit()
 
   def import_study_activities_json(self,cursor,data_json_path):
-    study_actvities = self.load_json(data_json_path)
-    for activity in study_actvities:
+    study_activities = self.load_json(data_json_path)
+    # Clear existing activities
+    cursor.execute('DELETE FROM study_activities')
+    for activity in study_activities:
       cursor.execute('''
       INSERT INTO study_activities (name,url,preview_url) VALUES (?,?,?)
-      ''', (activity['name'],activity['url'],activity['preview_url'],))
+      ''', (activity['name'],activity['url'],activity['preview_url']))
     self.get().commit()
+    print(f"Successfully imported {len(study_activities)} study activities")
 
   def import_word_json(self,cursor,group_name,data_json_path):
       # Insert a new group
@@ -83,10 +86,13 @@ class Db:
 
       # Get the ID of the group
       cursor.execute('SELECT id FROM groups WHERE name = ?', (group_name,))
-      core_verbs_group_id = cursor.fetchone()[0]
+      group_id = cursor.fetchone()[0]
 
-      # Insert some sample words (verbs) from JSON file and associate with the group
-      words = self.load_json(data_json_path)
+      # Load and parse JSON data
+      data = self.load_json(data_json_path)
+      # Get the word list based on group name
+      word_type = group_name.lower().split()[-1]  # 'Core Verbs' -> 'verbs'
+      words = data.get(word_type, [])
 
       for word in words:
         # Insert the word into the words table
@@ -108,21 +114,21 @@ class Db:
         # Insert the word-group relationship into word_groups table
         cursor.execute('''
           INSERT INTO word_groups (word_id, group_id) VALUES (?, ?)
-        ''', (word_id, core_verbs_group_id))
+        ''', (word_id, group_id))
       self.get().commit()
 
-      # Update the words_count in the groups table by counting all words in the group
+      # Update the words_count in the groups table
       cursor.execute('''
         UPDATE groups
         SET words_count = (
           SELECT COUNT(*) FROM word_groups WHERE group_id = ?
         )
         WHERE id = ?
-      ''', (core_verbs_group_id, core_verbs_group_id))
+      ''', (group_id, group_id))
 
       self.get().commit()
 
-      print(f"Successfully added {len(words)} verbs to the '{group_name}' group.")
+      print(f"Successfully added {len(words)} words to the '{group_name}' group.")
 
   # Initialize the database with sample data
   def init(self, app):

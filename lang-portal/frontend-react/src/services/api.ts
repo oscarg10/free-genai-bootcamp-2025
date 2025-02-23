@@ -279,6 +279,23 @@ export async function fetchGroupStudySessions(
   return response.json();
 }
 
+// Study Activity types
+export interface StudyActivity {
+  id: number;
+  title: string;
+  launch_url: string;
+  preview_url: string;
+}
+
+// Study Activity API
+export async function fetchStudyActivities(): Promise<StudyActivity[]> {
+  const response = await fetch(`${API_BASE_URL}/api/study-activities`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch study activities');
+  }
+  return response.json();
+}
+
 // Dashboard API
 export async function fetchRecentStudySession(): Promise<RecentSession | null> {
   const response = await fetch(`${API_BASE_URL}/dashboard/recent-session`);

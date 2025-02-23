@@ -1,49 +1,42 @@
 import { useEffect, useState } from 'react'
 import StudyActivity from '@/components/StudyActivity'
-
-type ActivityCard = {
-  id: number
-  preview_url: string
-  title: string
-  launch_url: string
-}
+import { StudyActivity as ActivityType, fetchStudyActivities } from '@/services/api'
 
 export default function StudyActivities() {
-  const [activities, setActivities] = useState<ActivityCard[]>([])
+  const [activities, setActivities] = useState<ActivityType[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/study-activities')
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('Failed to fetch study activities')
-        }
-        return response.json()
-      })
+    fetchStudyActivities()
       .then(data => {
+        console.log("Fetched activities:", data)
         setActivities(data)
         setLoading(false)
       })
       .catch(err => {
+        console.error("Error fetching activities:", err)
         setError(err.message)
         setLoading(false)
       })
   }, [])
 
   if (loading) {
-    return <div className="text-center">Loading study activities...</div>
+    return <div>Loading...</div>
   }
 
   if (error) {
-    return <div className="text-red-500">Error: {error}</div>
+    return <div>Error: {error}</div>
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {activities.map((activity) => (
-        <StudyActivity key={activity.id} activity={activity} />
-      ))}
+    <div className="container mx-auto py-8">
+      <h1 className="text-3xl font-bold mb-8">Study Activities</h1>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {activities.map(activity => (
+          <StudyActivity key={activity.id} activity={activity} />
+        ))}
+      </div>
     </div>
   )
 }
