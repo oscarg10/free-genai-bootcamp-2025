@@ -22,7 +22,8 @@ def init_db():
         'create_table_word_reviews.sql',
         'create_table_study_sessions.sql',
         'create_table_study_activities.sql',
-        'create_table_word_review_items.sql'
+        'create_table_word_review_items.sql',
+        'insert_study_activities.sql'  # Add this line to execute our inserts
     ]
     
     for sql_file in sql_files:
