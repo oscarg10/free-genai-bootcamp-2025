@@ -1,0 +1,90 @@
+<question>
+Context:
+Person A: Kann Johannes schwimmen?
+Person B: Ja, Johannes kann gut schwimmen.
+
+Question: Kann Johannes schwimmen?
+Options:
+A) Ja, er kann gut schwimmen
+B) Nein, er kann nicht schwimmen
+C) Er kann nur schwimmen, wenn er träumt
+D) Er schwimmt nur im Winter
+</question>
+
+<question>
+Context:
+Person A: Wie oft spielt Johannes Fußball?
+Person B: Er spielt zweimal pro Woche Fußball.
+
+Question: Wie oft spielt Johannes Fußball?
+Options:
+A) Einmal pro Woche
+B) Zweimal pro Woche
+C) Jeden Tag
+D) Nur am Wochenende
+</question>
+
+<question>
+Context:
+Person A: Wann spielt er Fußball?
+Person B: Er spielt am Montag und am Freitag Fußball.
+
+Question: Wann spielt er Fußball?
+Options:
+A) Am Montag und am Freitag
+B) Jeden Tag außer Sonntag
+C) Nur am Wochenende
+D) Nur am Dienstag
+</question>
+
+<question>
+Context:
+Person A: Was macht Lud sie gerne in seiner Freizeit?
+Person B: Er spielt gerne Squash und malt gern.
+
+Question: Was macht Lud sie gerne in seiner Freizeit?
+Options:
+A) Er spielt gerne Squash und malt gern
+B) Er liest gerne Bücher und spielt Videospiele
+C) Er geht gerne ins Kino und hört Musik
+D) Er fährt gerne Rad und spielt Tennis
+</question>
+
+<question>
+Context:
+Person A: Wann spielt Lud sie Squash?
+Person B: Er spielt am Dienstagabend um 8 Uhr Squash.
+
+Question: Wann spielt Lud sie Squash?
+Options:
+A) Am Dienstagabend um 8 Uhr
+B) Am Samstagmorgen um 10 Uhr
+C) Am Freitagabend um 7 Uhr
+D) Am Sonntagnachmittag um 3 Uhr
+</question>
+
+<question>
+Context:
+Person A: Was möchten Johannes und Lud sie machen?
+Person B: Sie möchten zusammen Squash spielen.
+
+Question: Was möchten Johannes und Lud sie machen?
+Options:
+A) Sie möchten zusammen Squash spielen
+B) Sie möchten zusammen Tennis spielen
+C) Sie möchten zusammen Rad fahren
+D) Sie möchten zusammen ins Kino gehen
+</question>
+
+<question>
+Context:
+Person A: Wann haben beide Zeit?
+Person B: Sie haben am Donnerstag um 19 Uhr 30 Zeit.
+
+Question: Wann haben beide Zeit?
+Options:
+A) Am Donnerstag um 19 Uhr 30
+B) Am Freitag um 18 Uhr
+C) Am Samstag um 16 Uhr
+D) Am Sonntag um 17 Uhr
+</question>
