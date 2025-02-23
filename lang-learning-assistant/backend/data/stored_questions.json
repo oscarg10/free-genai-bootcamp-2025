@@ -242,5 +242,125 @@
     "practice_type": "Dialogue Practice",
     "topic": "Travel",
     "created_at": "2025-02-23 19:24:53"
+  },
+  "20250223_200850": {
+    "Context": "Im Supermarkt Dialog:",
+    "Dialog": "Person A: Was möchten Sie kaufen? Person B: Ich möchte Äpfel und Brot kaufen.",
+    "Question": "Was möchte Person B kaufen?",
+    "Options": [
+      "Äpfel und Brot",
+      "Milch und Käse",
+      "Obst und Gemüse",
+      "Fleisch und Fisch"
+    ],
+    "practice_type": "Dialogue Practice",
+    "topic": "Daily Conversation",
+    "created_at": "2025-02-23 20:08:50",
+    "audio_file": null
+  },
+  "20250223_200954": {
+    "Context": "Im Supermarkt Dialog:",
+    "Dialog": "Person A: Was möchten Sie kaufen? Person B: Ich möchte Äpfel und Joghurt kaufen.",
+    "Question": "Was kauft Person B?",
+    "Options": [
+      "Äpfel und Joghurt",
+      "Brot und Käse",
+      "Milch und Brot",
+      "Wein und Bier"
+    ],
+    "practice_type": "Dialogue Practice",
+    "topic": "Daily Conversation",
+    "created_at": "2025-02-23 20:09:54",
+    "audio_file": null
+  },
+  "20250223_200958": {
+    "Context": "Im Supermarkt Dialog:",
+    "Dialog": "Person A: Was möchten Sie kaufen? Person B: Ich möchte Äpfel und Joghurt kaufen.",
+    "Question": "Was kauft Person B?",
+    "Options": [
+      "Äpfel und Joghurt",
+      "Brot und Käse",
+      "Milch und Brot",
+      "Wein und Bier"
+    ],
+    "practice_type": "Dialogue Practice",
+    "topic": "Daily Conversation",
+    "created_at": "2025-02-23 20:09:58",
+    "audio_file": "/var/folders/65/q7_xshzs2bn7m__4wnwdbbpw0000gn/T/tmpe29mv9zp.mp3"
+  },
+  "20250223_201149": {
+    "Context": "Im Café Dialog:",
+    "Dialog": "Person A: Was möchtest du trinken? Person B: Ich möchte einen Kaffee und ein Stück Kuchen.",
+    "Question": "Was möchte Person B trinken?",
+    "Options": [
+      "Einen Tee und eine Limonade",
+      "Einen Kaffee und ein Stück Kuchen",
+      "Einen Saft und einen Keks",
+      "Eine Limonade und einen Eistee"
+    ],
+    "practice_type": "Dialogue Practice",
+    "topic": "Daily Conversation",
+    "created_at": "2025-02-23 20:11:49",
+    "audio_file": null
+  },
+  "20250223_201333": {
+    "Context": "Im Café Dialog:",
+    "Dialog": "Person A: Was möchtest du trinken? Person B: Ich möchte einen Kaffee und einen Kuchen.",
+    "Question": "Was bestellt Person B im Café?",
+    "Options": [
+      "Ein Bier und eine Pizza",
+      "Einen Tee und einen Keks",
+      "Einen Kaffee und einen Kuchen",
+      "Einen Saft und einen Toast"
+    ],
+    "practice_type": "Dialogue Practice",
+    "topic": "Daily Conversation",
+    "created_at": "2025-02-23 20:13:33",
+    "audio_file": null
+  },
+  "20250223_201654": {
+    "Context": "Im Café Dialog:",
+    "Dialog": "Person A: Was möchtest du trinken? Person B: Ich möchte einen Kaffee und einen Kuchen.",
+    "Question": "Was trinkt Person B im Café?",
+    "Options": [
+      "Eine Limonade und einen Salat",
+      "Eine Tasse Tee und einen Keks",
+      "Einen Kaffee und einen Kuchen",
+      "Eine Schokolade und einen Apfel"
+    ],
+    "practice_type": "Dialogue Practice",
+    "topic": "Daily Conversation",
+    "created_at": "2025-02-23 20:16:54",
+    "audio_file": null
+  },
+  "20250223_201755": {
+    "Context": "Im Supermarkt Dialog:",
+    "Dialog": "Person A: Was möchten Sie kaufen? Person B: Ich möchte Äpfel und Joghurt kaufen.",
+    "Question": "Was möchte Person B kaufen?",
+    "Options": [
+      "Milch und Brot",
+      "Äpfel und Joghurt",
+      "Käse und Wein",
+      "Bananen und Orangen"
+    ],
+    "practice_type": "Dialogue Practice",
+    "topic": "Daily Conversation",
+    "created_at": "2025-02-23 20:17:55",
+    "audio_file": null
+  },
+  "20250223_201800": {
+    "Context": "Im Supermarkt Dialog:",
+    "Dialog": "Person A: Was möchten Sie kaufen? Person B: Ich möchte Äpfel und Joghurt kaufen.",
+    "Question": "Was möchte Person B kaufen?",
+    "Options": [
+      "Milch und Brot",
+      "Äpfel und Joghurt",
+      "Käse und Wein",
+      "Bananen und Orangen"
+    ],
+    "practice_type": "Dialogue Practice",
+    "topic": "Daily Conversation",
+    "created_at": "2025-02-23 20:18:00",
+    "audio_file": "/Users/oscargordillo/free-genai-bootcamp-2025/lang-learning-assistant/frontend/static/audio/combined_20250223_201800.mp3"
   }
 }
