@@ -1,0 +1,90 @@
+<question>
+Context:
+Person A: "Ich weiß du kommst aus der Schweiz aber woher kommst du genau"
+Person B: "Ich komme aus Luzern"
+
+Question: Woher kommt Lutz genau?
+Options:
+A) Aus Zürich
+B) Aus Luzern
+C) Aus Heidelberg
+D) Aus Madrid
+</question>
+
+<question>
+Context:
+Person A: "Wo lebt Lutz im Moment"
+Person B: "Er lebt in Italien in Rom"
+
+Question: Wo lebt Lutz im Moment?
+Options:
+A) In Zürich
+B) In Italien, Rom
+C) In Heidelberg
+D) In Madrid
+</question>
+
+<question>
+Context:
+Person A: "Welche Sprachen spricht er"
+Person B: "Er spricht Deutsch, Englisch, ein bisschen Italienisch und ein bisschen Französisch"
+
+Question: Welche Sprachen spricht Lutz?
+Options:
+A) Spanisch, Italienisch, Französisch
+B) Deutsch, Englisch, ein bisschen Italienisch und ein bisschen Französisch
+C) Chinesisch, Japanisch, Koreanisch
+D) Portugiesisch, Niederländisch, Schwedisch
+</question>
+
+<question>
+Context:
+Person A: "Hat er Geschwister"
+Person B: "Ja, er hat einen Bruder"
+
+Question: Hat Lutz Geschwister?
+Options:
+A) Nein, er hat keine Geschwister
+B) Ja, er hat einen Bruder
+C) Ja, er hat zwei Schwestern
+D) Ja, er hat drei Geschwister
+</question>
+
+<question>
+Context:
+Person A: "Wie ist sein Familienname"
+Person B: "Müller"
+
+Question: Wie ist Johannes' Familienname?
+Options:
+A) Müller
+B) Schmidt
+C) Weber
+D) Fischer
+</question>
+
+<question>
+Context:
+Person A: "Und was machst du dort"
+Person B: "Ich bin Deutschlehrer von Beruf"
+
+Question: Was macht Lutz in Spanien?
+Options:
+A) Er ist Arzt
+B) Er ist Deutschlehrer
+C) Er ist Ingenieur
+D) Er ist Künstler
+</question>
+
+<question>
+Context:
+Person A: "Wie alt ist seine Schwester"
+Person B: "Sie ist 29"
+
+Question: Wie alt ist Lutz' Schwester?
+Options:
+A) 25
+B) 29
+C) 35
+D) 40
+</question>
