@@ -1,0 +1,90 @@
+<question>
+Context:
+Person A: nummer 1 kann johannes schwimmen
+Person B: ja johannes kann gut schwimmen
+
+Question: Kann Johannes schwimmen?
+Options:
+A) Nein, Johannes kann nicht schwimmen
+B) Ja, Johannes kann gut schwimmen
+C) Johannes schwimmt nur schlecht
+D) Johannes schwimmt nie
+</question>
+
+<question>
+Context:
+Person A: nummer 2 wie oft spielt johannes fußball
+Person B: er spielt zweimal pro woche fußball
+
+Question: Wie oft spielt Johannes Fußball pro Woche?
+Options:
+A) Einmal
+B) Zweimal
+C) Dreimal
+D) Viermal
+</question>
+
+<question>
+Context:
+Person A: nummer drei wann spielt er fußball
+Person B: er spielt am montag und am freitag fußball
+
+Question: Wann spielt Johannes Fußball?
+Options:
+A) Montag und Sonntag
+B) Dienstag und Freitag
+C) Montag und Freitag
+D) Mittwoch und Samstag
+</question>
+
+<question>
+Context:
+Person A: nummer vier was macht lud sie gerne in seiner freizeit
+Person B: er spielt gerne squash und malt gern
+
+Question: Was macht Lud sie gerne in seiner Freizeit?
+Options:
+A) Tanzen und singen
+B) Squash spielen und malen
+C) Lesen und kochen
+D) Radfahren und schwimmen
+</question>
+
+<question>
+Context:
+Person A: nummer fünf wann spielt lud sie squash
+Person B: er spielt am dienstagabend um 8 uhr squash
+
+Question: Wann spielt Lud sie Squash normalerweise?
+Options:
+A) Am Montagabend
+B) Am Dienstagabend um 8 Uhr
+C) Am Freitagabend
+D) Am Samstagnachmittag
+</question>
+
+<question>
+Context:
+Person A: nummer 6 was möchten johannes und lud sie machen
+Person B: sie möchten zusammen squash spielen
+
+Question: Was möchten Johannes und Lud sie gerne zusammen machen?
+Options:
+A) Radfahren
+B) Tanzen
+C) Squash spielen
+D) Schwimmen
+</question>
+
+<question>
+Context:
+Person A: nummer 7 wann haben beide zeit
+Person B: sie haben am donnerstag um 19 uhr 30 zeit
+
+Question: Wann haben Johannes und Lud sie beide Zeit?
+Options:
+A) Am Mittwoch um 18 Uhr
+B) Am Donnerstag um 19 Uhr 30
+C) Am Freitag um 20 Uhr
+D) Am Samstag um 17 Uhr
+</question>
