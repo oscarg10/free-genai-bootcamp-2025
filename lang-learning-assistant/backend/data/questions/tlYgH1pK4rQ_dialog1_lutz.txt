@@ -5,55 +5,55 @@ Person B: "Ich komme aus Luzern"
 
 Question: Woher kommt Lutz genau?
 Options:
-A) Aus Zürich
-B) Aus Luzern
-C) Aus Heidelberg
-D) Aus Madrid
+A) Zürich
+B) Luzern
+C) Basel
+D) Bern
 </question>
 
 <question>
 Context:
 Person A: "Wo lebt Lutz im Moment"
-Person B: "Er lebt in Italien in Rom"
+Person B: "Ich lebe im Moment in Italien in Rom"
 
 Question: Wo lebt Lutz im Moment?
 Options:
-A) In Zürich
-B) In Italien, Rom
-C) In Heidelberg
-D) In Madrid
+A) Zürich
+B) Luzern
+C) Italien, Rom
+D) Heidelberg
 </question>
 
 <question>
 Context:
 Person A: "Welche Sprachen spricht er"
-Person B: "Er spricht Deutsch, Englisch, ein bisschen Italienisch und ein bisschen Französisch"
+Person B: "Ich spreche Deutsch, Englisch, ein bisschen Italienisch und ein bisschen Französisch"
 
 Question: Welche Sprachen spricht Lutz?
 Options:
-A) Spanisch, Italienisch, Französisch
-B) Deutsch, Englisch, ein bisschen Italienisch und ein bisschen Französisch
-C) Chinesisch, Japanisch, Koreanisch
-D) Portugiesisch, Niederländisch, Schwedisch
+A) Deutsch, Spanisch, Französisch
+B) Deutsch, Englisch, Italienisch, Französisch
+C) Italienisch, Spanisch, Englisch
+D) Französisch, Spanisch, Deutsch
 </question>
 
 <question>
 Context:
 Person A: "Hat er Geschwister"
-Person B: "Ja, er hat einen Bruder"
+Person B: "Ja, ich habe einen Bruder"
 
 Question: Hat Lutz Geschwister?
 Options:
-A) Nein, er hat keine Geschwister
+A) Nein
 B) Ja, er hat einen Bruder
 C) Ja, er hat zwei Schwestern
-D) Ja, er hat drei Geschwister
+D) Ja, er hat drei Brüder
 </question>
 
 <question>
 Context:
-Person A: "Wie ist sein Familienname"
-Person B: "Müller"
+Person A: "Wie ist dein Familienname?"
+Person B: "Mein Familienname ist Müller"
 
 Question: Wie ist Johannes' Familienname?
 Options:
@@ -78,8 +78,8 @@ D) Er ist Künstler
 
 <question>
 Context:
-Person A: "Wie alt ist seine Schwester"
-Person B: "Sie ist 29"
+Person A: "Wie alt ist seine Schwester?"
+Person B: "Sie ist 29 und sie ist Ärztin"
 
 Question: Wie alt ist Lutz' Schwester?
 Options:
