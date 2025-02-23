@@ -170,14 +170,12 @@ def count_characters(text):
         return 0, 0
         
     def is_german(char):
-        return any([
-            '\u4e00' <= char <= '\u9fff',  # Kanji
-            '\u3040' <= char <= '\u309f',  # Hiragana
-            '\u30a0' <= char <= '\u30ff',  # Katakana
-        ])
+        # German-specific characters
+        german_chars = set('äöüßÄÖÜ')
+        return char in german_chars or char.isalpha()
     
-    ge_chars = sum(1 for char in text if is_german(char))
-    return ge_chars, len(text)
+    de_chars = sum(1 for char in text if is_german(char))
+    return de_chars, len(text)
 
 def render_transcript_stage():
     """Render the raw transcript stage"""
@@ -224,12 +222,12 @@ def render_transcript_stage():
         st.subheader("Transcript Stats")
         if st.session_state.transcript:
             # Calculate stats
-            jp_chars, total_chars = count_characters(st.session_state.transcript)
+            de_chars, total_chars = count_characters(st.session_state.transcript)
             total_lines = len(st.session_state.transcript.split('\n'))
             
             # Display stats
             st.metric("Total Characters", total_chars)
-            st.metric("German Characters", ge_chars)
+            st.metric("German Characters", de_chars)
             st.metric("Total Lines", total_lines)
         else:
             st.info("Load a transcript to see statistics")
