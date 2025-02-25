@@ -1,2 +1,3 @@
 lang-learning-assistant/backend/data/.gitignore
 .gradio/certificate.pem
+writing-practice/.gradio/certificate.pem
