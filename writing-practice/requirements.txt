@@ -1,0 +1,11 @@
+gradio>=4.0.0
+requests==2.31.0
+python-dotenv==1.0.1
+PyYAML>=6.0.1
+streamlit==1.31.1
+transformers>=4.36.0
+torch>=2.2.0
+sentencepiece>=0.1.99
+easyocr>=1.7.1
+numpy>=1.24.0
+# need to add OCR
