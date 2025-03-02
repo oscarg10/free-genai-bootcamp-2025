@@ -1,0 +1,23 @@
+#! /bin/bash
+
+curl --max-time 120 -X POST "http://127.0.0.1:9880" \
+-H "Connection: keep-alive" \
+-H "Content-Type: application/json" \
+-d @- \
+--output output-1m.wav << 'EOF'
+{
+    "refer_wav_path": "/audio/oscar-ref-1m.wav",
+    "prompt_text": "Ahh… what a perfect day. Warm sun, clear skies… I could stay out here forever.
+
+Okay, maybe not forever. Where did I put my sunglasses?
+
+Notebooks, snacks… everything but the one thing I actually need. Classic.
+
+Much better. Now, time to do absolutely nothing and enjoy this.
+
+Lucky little thing. Just floating wherever the breeze takes you. No deadlines, no emails… maybe I should try that. Butterfly lifestyle.",
+    "prompt_language": "en",
+    "text": "This is a demonstration of advanced voice synthesis technology. Watch how accurately it captures my natural speaking style and tone.",
+    "text_language": "en"
+}
+EOF
