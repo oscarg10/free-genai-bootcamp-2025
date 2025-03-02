@@ -1,3 +1,6 @@
 lang-learning-assistant/backend/data/.gitignore
-.gradio/certificate.pem
+
 writing-practice/.gradio/certificate.pem
+opea-comps/mega-service-new/.gitignore
+.gitignore
+.gitignore

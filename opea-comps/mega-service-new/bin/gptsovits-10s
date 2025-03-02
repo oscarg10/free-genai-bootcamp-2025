@@ -1,0 +1,15 @@
+#! /bin/bash
+
+curl --max-time 60 -X POST "http://127.0.0.1:9880" \
+-H "Connection: keep-alive" \
+-H "Content-Type: application/json" \
+-d @- \
+--output output-10s.wav << 'EOF'
+{
+    "refer_wav_path": "/audio/oscar-ref-10s.wav",
+    "prompt_text": "Ahh… what a perfect day. Warm sun, clear skies… I could stay out here forever. Okay, maybe not forever. Where did I put my sunglasses?",
+    "prompt_language": "en",
+    "text": "Hi everyone! This is a test of the voice cloning system.",
+    "text_language": "en"
+}
+EOF

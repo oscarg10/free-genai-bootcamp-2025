@@ -1,0 +1,14 @@
+#! /bin/bash
+
+curl -X POST "http://127.0.0.1:9880" \
+-H "Content-Type: application/json" \
+-d @- \
+--output speech.wav << 'EOF'
+{
+    "refer_wav_path": "/audio/oscar-ref-10s.wav",
+    "prompt_text": "Hello, this is a test.",
+    "prompt_language": "en",
+    "text": "Hello! This is a test of the text-to-speech system.",
+    "text_language": "en"
+}
+EOF
