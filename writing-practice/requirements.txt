@@ -8,4 +8,3 @@ torch>=2.2.0
 sentencepiece>=0.1.99
 easyocr>=1.7.1
 numpy>=1.24.0
-# need to add OCR
