@@ -48,6 +48,11 @@ class Agent:
         3. Extract vocabulary
         4. Save results
         5. Return response
+
+        Raises:
+            LyricsError: For any lyrics-related errors (including empty requests)
+            VocabularyError: For vocabulary extraction errors
+            StorageError: For storage-related errors
         """
         try:
             # Step 1: Parse request
@@ -55,26 +60,29 @@ class Agent:
                 raise LyricsError("Empty request message")
                 
             song_title, artist = self._parse_song_request(message)
-            if not song_title:
-                raise LyricsError("Could not parse song title from request")
+            if not song_title or not artist:
+                raise LyricsError("Both song title and artist are required")
                 
             self._add_thought(f"Looking for lyrics of '{song_title}' by '{artist}'")
             
             # Step 2: Search for lyrics with timeout
             try:
                 search_results = await search_lyrics(song_title, artist, timeout=10)
+                if not search_results:
+                    raise LyricsNotFoundError(f"No lyrics found for '{song_title}' by '{artist}'")
+                    
                 lyrics = search_results[0].get('body', '')
                 if not lyrics:
                     raise LyricsError("Empty lyrics returned from search")
                     
                 self._add_thought("Successfully found lyrics, extracting vocabulary")
                 
-            except (LyricsNotFoundError, LyricsError) as e:
-                self._add_thought(f"Lyrics error: {str(e)}")
-                return {
-                    "status": "error",
-                    "error": str(e)
-                }
+            except asyncio.TimeoutError:
+                raise LyricsError("Lyrics search timed out")
+            except LyricsNotFoundError as e:
+                raise LyricsError(str(e))
+            except Exception as e:
+                raise LyricsError(f"Error searching for lyrics: {str(e)}")
             
             # Step 3: Extract vocabulary with timeout
             try:
@@ -84,13 +92,10 @@ class Agent:
                     
                 self._add_thought(f"Extracted {len(vocab_items)} vocabulary items")
                 
-            except VocabularyError as e:
-                self._add_thought(f"Vocabulary error: {str(e)}")
-                return {
-                    "status": "error",
-                    "error": str(e),
-                    "lyrics": lyrics
-                }
+            except asyncio.TimeoutError:
+                raise VocabularyError("Vocabulary extraction timed out")
+            except Exception as e:
+                raise VocabularyError(f"Error extracting vocabulary: {str(e)}")
             
             # Step 4: Generate song ID and save results
             try:
@@ -107,14 +112,8 @@ class Agent:
                 
                 self._add_thought(f"Saved results with ID: {song_id}")
                 
-            except StorageError as e:
-                self._add_thought(f"Storage error: {str(e)}")
-                return {
-                    "status": "error",
-                    "error": str(e),
-                    "lyrics": lyrics,
-                    "vocabulary": [item.dict() for item in vocab_items]
-                }
+            except Exception as e:
+                raise StorageError(f"Error saving results: {str(e)}")
             
             # Step 5: Return response
             # Convert VocabularyItems to dicts for JSON serialization
@@ -139,13 +138,15 @@ class Agent:
                 "total_words": save_result["total_words"]
             }
             
+        except (LyricsError, VocabularyError, StorageError) as e:
+            logger.error(str(e))
+            self._add_thought(str(e))
+            raise
         except Exception as e:
-            logger.error(f"Unexpected error: {str(e)}")
-            self._add_thought(f"Unexpected error: {str(e)}")
-            return {
-                "status": "error",
-                "error": f"Unexpected error: {str(e)}"
-            }
+            error_msg = f"Unexpected error: {str(e)}"
+            logger.error(error_msg)
+            self._add_thought(error_msg)
+            raise LyricsError(error_msg)
 
     def get_thought_history(self) -> List[str]:
         """Get the agent's thought process history"""
