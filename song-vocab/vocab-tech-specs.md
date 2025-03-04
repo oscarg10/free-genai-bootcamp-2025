@@ -12,7 +12,7 @@ We want to create a program that will find lyrics off the internet for a target 
     uvicorn main:app --reload
 - Instructor (for structured json output)
 - SQLite3 (for database)
-- duckduckgo-search (to search for lyrics)
+- Google-search --SERPApi (to search for lyrics)
 
 ## API Endpoints
 
