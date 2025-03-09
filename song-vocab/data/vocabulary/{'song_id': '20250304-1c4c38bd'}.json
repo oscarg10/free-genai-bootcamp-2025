@@ -1,0 +1,30 @@
+{
+  "song_id": {
+    "song_id": "20250304-1c4c38bd"
+  },
+  "title": "99 Luftballons",
+  "artist": "Nena",
+  "vocabulary": [
+    {
+      "word": "Luftballons",
+      "context": "99 Luftballons auf ihrem Weg zum Horizon"
+    },
+    {
+      "word": "Düsenflieger",
+      "context": "99 Düsenflieger"
+    },
+    {
+      "word": "Kriegsminister",
+      "context": "Kriegsminister"
+    },
+    {
+      "word": "Streichholz",
+      "context": "Streichholz und Benzinkanister"
+    },
+    {
+      "word": "Benzinkanister",
+      "context": "Streichholz und Benzinkanister"
+    }
+  ],
+  "total_words": 5
+}
