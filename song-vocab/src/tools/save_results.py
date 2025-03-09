@@ -8,6 +8,7 @@ from src.exceptions import StorageError
 
 logger = logging.getLogger('song_vocab')
 
+
 def save_results(song_id: str, lyrics: str, vocabulary: List[Any], title: str, artist: str) -> Dict[str, Any]:
     """
     Save lyrics and vocabulary to both files and database.
