@@ -4,7 +4,7 @@ from datetime import datetime
 import math
 
 def load(app):
-  @app.route('/study_sessions', methods=['POST'])
+  @app.route('/api/study-sessions', methods=['POST'])
   @cross_origin()
   def create_study_session():
     try:
@@ -125,13 +125,11 @@ def load(app):
           sa.id as activity_id,
           sa.name as activity_name,
           ss.created_at,
-          COUNT(wri.id) as review_items_count
+          0 as review_items_count
         FROM study_sessions ss
         JOIN groups g ON g.id = ss.group_id
         JOIN study_activities sa ON sa.id = ss.study_activity_id
-        LEFT JOIN word_review_items wri ON wri.study_session_id = ss.id
         WHERE ss.id = ?
-        GROUP BY ss.id
       ''', (id,))
       
       session = cursor.fetchone()
@@ -143,31 +141,10 @@ def load(app):
       per_page = request.args.get('per_page', 10, type=int)
       offset = (page - 1) * per_page
 
-      # Get the words reviewed in this session with their review status
-      cursor.execute('''
-        SELECT 
-          w.*,
-          COALESCE(SUM(CASE WHEN wri.correct = 1 THEN 1 ELSE 0 END), 0) as session_correct_count,
-          COALESCE(SUM(CASE WHEN wri.correct = 0 THEN 1 ELSE 0 END), 0) as session_wrong_count
-        FROM words w
-        JOIN word_review_items wri ON wri.word_id = w.id
-        WHERE wri.study_session_id = ?
-        GROUP BY w.id
-        ORDER BY w.kanji
-        LIMIT ? OFFSET ?
-      ''', (id, per_page, offset))
-      
-      words = cursor.fetchall()
-
-      # Get total count of words
-      cursor.execute('''
-        SELECT COUNT(DISTINCT w.id) as count
-        FROM words w
-        JOIN word_review_items wri ON wri.word_id = w.id
-        WHERE wri.study_session_id = ?
-      ''', (id,))
-      
-      total_count = cursor.fetchone()['count']
+      # For a new session, we won't have any review items yet
+      # Return an empty list of words and 0 total count
+      words = []
+      total_count = 0
 
       return jsonify({
         'session': {
@@ -182,8 +159,7 @@ def load(app):
         },
         'words': [{
           'id': word['id'],
-          'kanji': word['kanji'],
-          'romaji': word['romaji'],
+          'german': word['german'],
           'english': word['english'],
           'correct_count': word['session_correct_count'],
           'wrong_count': word['session_wrong_count']
@@ -196,7 +172,7 @@ def load(app):
     except Exception as e:
       return jsonify({"error": str(e)}), 500
 
-  @app.route('/study_sessions/<id>/review', methods=['POST'])
+  @app.route('/api/study-sessions/<id>/review', methods=['POST'])
   @cross_origin()
   def log_review(id):
     cursor = app.db.cursor()
