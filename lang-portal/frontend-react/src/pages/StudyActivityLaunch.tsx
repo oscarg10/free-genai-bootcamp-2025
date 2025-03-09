@@ -38,7 +38,7 @@ export default function StudyActivityLaunch() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch(`http://localhost:5000/api/study-activities/${id}/launch`)
+    fetch(`http://localhost:5100/api/study-activities/${id}/launch`)
       .then(response => {
         if (!response.ok) throw new Error('Failed to fetch launch data')
         return response.json()
@@ -62,17 +62,38 @@ export default function StudyActivityLaunch() {
   }, [setCurrentStudyActivity])
 
   const handleLaunch = async () => {
-    if (!launchData?.activity || !selectedGroup) return;
+    if (!launchData?.activity || !selectedGroup) {
+      console.log('Missing data:', { activity: launchData?.activity, selectedGroup });
+      return;
+    }
     
     try {
+      console.log('Creating study session with:', { groupId: selectedGroup, activityId: launchData.activity.id });
       // Create a study session first
       const result = await createStudySession(parseInt(selectedGroup), launchData.activity.id);
       const sessionId = result.session_id;
+      console.log('Study session created:', { sessionId });
+      if (!sessionId) {
+        console.error('No session ID returned from server');
+        return;
+      }
       
-      // Redirect to the Gradio app with the session ID and group ID
-      window.location.href = `http://localhost:7860?session_id=${sessionId}&group_id=${selectedGroup}`;
+      // Open Gradio app in a new tab - always use localhost
+      const gradioUrl = `http://localhost:8000/?session_id=${sessionId}&group_id=${selectedGroup}`;
+      console.log('Opening Gradio app with URL:', gradioUrl);
+      
+      // Add a small delay to ensure session is saved
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      window.open(gradioUrl, '_blank');
+      
+      // Navigate to the session show page in the main app
+      const showUrl = `/sessions/${sessionId}`;
+      console.log('Navigating to:', { url: showUrl });
+      navigate(showUrl);
     } catch (error) {
       console.error('Failed to launch activity:', error);
+      setError(error instanceof Error ? error.message : 'Failed to launch activity');
     }
   }
 
