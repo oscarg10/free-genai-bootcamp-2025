@@ -219,14 +219,14 @@ export async function createStudySession(
   groupId: number,
   studyActivityId: number
 ): Promise<{ session_id: number }> {
-  const response = await fetch(`${API_BASE_URL}/study-sessions`, {
+  const response = await fetch(`${API_BASE_URL}/api/study-sessions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       group_id: groupId,
-      activity_id: studyActivityId,
+      study_activity_id: studyActivityId,
     }),
   });
   if (!response.ok) throw new Error('Failed to create study session');
@@ -237,7 +237,7 @@ export async function submitStudySessionReview(
   sessionId: number,
   reviews: WordReview[]
 ): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/study-sessions/${sessionId}/review`, {
+  const response = await fetch(`${API_BASE_URL}/api/study-sessions/${sessionId}/review`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

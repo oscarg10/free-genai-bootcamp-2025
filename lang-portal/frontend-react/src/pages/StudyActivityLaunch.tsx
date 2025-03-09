@@ -69,16 +69,8 @@ export default function StudyActivityLaunch() {
       const result = await createStudySession(parseInt(selectedGroup), launchData.activity.id);
       const sessionId = result.session_id;
       
-      // Replace any instances of $group_id with the actual group id and add session_id
-      const launchUrl = new URL(launchData.activity.launch_url);
-      launchUrl.searchParams.set('group_id', selectedGroup);
-      launchUrl.searchParams.set('session_id', sessionId.toString());
-      
-      // Open the modified URL in a new tab
-      window.open(launchUrl.toString(), '_blank');
-      
-      // Navigate to the session show page
-      navigate(`/sessions/${sessionId}`);
+      // Redirect to the Gradio app with the session ID and group ID
+      window.location.href = `http://localhost:7860?session_id=${sessionId}&group_id=${selectedGroup}`;
     } catch (error) {
       console.error('Failed to launch activity:', error);
     }

@@ -27,6 +27,7 @@ class AppState(Enum):
 current_sentence = None
 current_state = AppState.SETUP
 current_english_sentence = None
+session_id = None  # Track the current study session
 
 # Initialize translation pipeline
 try:
@@ -73,12 +74,21 @@ SENTENCE_TEMPLATES = {
     ]
 }
 
-def get_word_and_sentence(group_id: str = "1") -> Tuple[str, str]:
+def get_word_and_sentence(group_id_state: gr.State) -> Tuple[str, str]:
     """Fetch a random word and generate a practice sentence."""
     global current_sentence, current_state, current_english_sentence
+    
     try:
+        # We already have a session_id from the URL parameters
+        if not session_id:
+            return "Error", "No session ID found. Please launch from the main app."
+        
         # Fetch vocabulary from backend
-        response = requests.get(f"http://localhost:5000/groups/{group_id}/words")
+        response = requests.get(
+            "http://localhost:5000/api/study-activities/words",
+            params={"group_id": group_id_state.value}
+        )
+        
         if response.status_code != 200:
             return "Error", f"Failed to fetch words. Status: {response.status_code}"
         
@@ -88,20 +98,15 @@ def get_word_and_sentence(group_id: str = "1") -> Tuple[str, str]:
         
         # Select random word
         word = random.choice(words)
-        german_word = word['german']
+        german_word = word['german']  # Now includes article if it's a noun
         word_type = word['word_type'].lower()
         
         # Generate a simple sentence using templates
         templates = SENTENCE_TEMPLATES.get(word_type, SENTENCE_TEMPLATES['noun'])
         template = random.choice(templates)
         
-        # For nouns, we need to keep the article
-        if word_type == 'noun':
-            sentence = template.format(german_word)
-        else:
-            # For other types, we might need to extract just the word without article
-            word_without_article = german_word.split()[-1]
-            sentence = template.format(word_without_article)
+        # For nouns, the article is already included in german_word
+        sentence = template.format(german_word)
         
         # Store the current sentence for evaluation
         current_sentence = sentence
@@ -198,6 +203,24 @@ Grade: {grade}
 
 # Create Gradio interface
 with gr.Blocks(title="German Writing Practice") as demo:
+    # Get session_id and group_id from URL parameters
+    session_id = gr.State(value=None)
+    group_id = gr.State(value=None)
+    
+    def load_session(request: gr.Request):
+        global session_id, current_state
+        # Get parameters from URL
+        params = request.query_params
+        session_id = params.get('session_id')
+        group_id = params.get('group_id')
+        if not session_id or not group_id:
+            raise ValueError("Missing session_id or group_id")
+        logger.info(f"Loading session {session_id} for group {group_id}")
+        current_state = AppState.PRACTICE
+        return session_id, group_id
+    
+    demo.load(load_session, outputs=[session_id, group_id])
+    
     gr.Markdown("# German Writing Practice")
     
     # Create state-dependent components
@@ -263,6 +286,7 @@ with gr.Blocks(title="German Writing Practice") as demo:
     
     new_word_btn.click(
         fn=get_word_and_sentence,
+        inputs=[group_id],
         outputs=[word_display, sentence_display]
     ).then(
         fn=on_new_question,
@@ -287,4 +311,12 @@ with gr.Blocks(title="German Writing Practice") as demo:
     )
 
 if __name__ == "__main__":
-    demo.launch(server_port=8082, share=True)
+    # Try different ports if the default one is in use
+    for port in range(8080, 8090):
+        try:
+            demo.launch(server_port=port, share=True)
+            break
+        except OSError:
+            if port == 8089:  # Last port to try
+                raise
+            continue

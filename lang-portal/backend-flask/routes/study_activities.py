@@ -7,19 +7,15 @@ def load(app):
     @cross_origin()
     def get_study_activities():
         cursor = app.db.cursor()
-        print("Fetching study activities...")
         cursor.execute('SELECT id, name, url, preview_url FROM study_activities')
         activities = cursor.fetchall()
-        print(f"Found {len(activities)} activities: {activities}")
         
-        result = [{
+        return jsonify([{
             'id': activity['id'],
             'title': activity['name'],
             'launch_url': activity['url'],
             'preview_url': activity['preview_url']
-        } for activity in activities]
-        print(f"Returning: {result}")
-        return jsonify(result)
+        } for activity in activities])
 
     @app.route('/api/study-activities/<int:id>', methods=['GET'])
     @cross_origin()
@@ -105,26 +101,29 @@ def load(app):
     def get_study_activity_launch_data(id):
         cursor = app.db.cursor()
         
-        # Get activity details
-        cursor.execute('SELECT id, name, url, preview_url FROM study_activities WHERE id = ?', (id,))
-        activity = cursor.fetchone()
+        try:
+            # Get activity details
+            cursor.execute('SELECT id, name, url, preview_url FROM study_activities WHERE id = ?', (id,))
+            activity = cursor.fetchone()
+            
+            if not activity:
+                return jsonify({'error': 'Activity not found'}), 404
         
-        if not activity:
-            return jsonify({'error': 'Activity not found'}), 404
+            # Get available groups
+            cursor.execute('SELECT id, name FROM groups')
+            groups = cursor.fetchall()
         
-        # Get available groups
-        cursor.execute('SELECT id, name FROM groups')
-        groups = cursor.fetchall()
-        
-        return jsonify({
-            'activity': {
-                'id': activity['id'],
-                'title': activity['name'],
-                'launch_url': activity['url'],
-                'preview_url': activity['preview_url']
-            },
-            'groups': [{
-                'id': group['id'],
-                'name': group['name']
-            } for group in groups]
-        })
+            return jsonify({
+                'activity': {
+                    'id': activity['id'],
+                    'title': activity['name'],
+                    'launch_url': activity['url'],
+                    'preview_url': activity['preview_url']
+                },
+                'groups': [{
+                    'id': group['id'],
+                    'name': group['name']
+                } for group in groups]
+            })
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
