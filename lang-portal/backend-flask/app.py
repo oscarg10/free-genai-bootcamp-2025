@@ -17,6 +17,20 @@ load_dotenv()
 def create_app(test_config=None):
     app = Flask(__name__)
     
+    # Configure CORS to allow requests from frontend
+    CORS(app, resources={
+        r"/*": {
+            "origins": [
+                "http://localhost:5173",  # Vite dev server
+                "http://localhost:3000",  # Alternative React port
+                "http://127.0.0.1:5173",
+                "http://127.0.0.1:3000"
+            ],
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"]
+        }
+    })
+    
     # Development configuration
     app.config.update(
         SECRET_KEY=os.environ['SECRET_KEY'],
@@ -24,9 +38,6 @@ def create_app(test_config=None):
         ENV='development'
     )
 
-    # Enable CORS for development
-    CORS(app, origins=os.environ.get('ALLOWED_ORIGINS', '*'))
-    
     # Initialize database
     app.db = Db(os.environ.get('DATABASE_URL', 'sqlite:///words.db'))
     
@@ -56,4 +67,13 @@ def create_app(test_config=None):
 app = create_app()
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # Try different ports if the default one is in use
+    for port in range(5100, 5110):  # Try ports 5100-5109
+        try:
+            app.run(host='0.0.0.0', debug=True, port=port)  # Listen on all interfaces
+            print(f"\nFlask app running at: http://localhost:{port}")
+            break
+        except OSError:
+            if port == 5109:  # Last port to try
+                raise
+            continue
