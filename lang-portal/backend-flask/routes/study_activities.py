@@ -3,6 +3,7 @@ from flask_cors import cross_origin
 import math
 
 def load(app):
+
     @app.route('/api/study-activities', methods=['GET'])
     @cross_origin()
     def get_study_activities():
@@ -126,4 +127,44 @@ def load(app):
                 } for group in groups]
             })
         except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+    @app.route('/api/study-activities/words', methods=['GET'])
+    @cross_origin()
+    def get_study_activity_words():
+        try:
+            # Get group_id from query parameters - try both ways
+            group_id = request.args.get('group_id')
+            if group_id is None:
+                return jsonify({'error': 'group_id is required'}), 400
+                
+            try:
+                group_id = int(group_id)
+            except (TypeError, ValueError):
+                return jsonify({'error': 'group_id must be a number'}), 400
+
+            # Get words for the group
+            cursor = app.db.cursor()
+            cursor.execute('''
+                SELECT w.* FROM words w
+                JOIN word_groups gw ON w.id = gw.word_id
+                WHERE gw.group_id = ?
+            ''', (group_id,))
+            words = cursor.fetchall()
+
+            if not words:
+                return jsonify({'error': 'No words found for this group'}), 404
+
+            return jsonify({
+                'words': [{
+                    'id': word['id'],
+                    'german': word['german'],
+                    'english': word['english'],
+                    'word_type': word['word_type'],
+                    'article': word['article'],
+                    'pronunciation': word['pronunciation']
+                } for word in words]
+            })
+        except Exception as e:
+            app.logger.error(f"Error fetching words: {str(e)}")
             return jsonify({'error': str(e)}), 500

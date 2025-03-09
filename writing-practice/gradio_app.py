@@ -1,3 +1,8 @@
+# Disable HuggingFace telemetry
+import os
+os.environ['HF_HUB_DISABLE_TELEMETRY'] = '1'
+os.environ['GRADIO_ANALYTICS_ENABLED'] = 'False'
+
 import gradio as gr
 import requests
 import random
@@ -74,19 +79,23 @@ SENTENCE_TEMPLATES = {
     ]
 }
 
-def get_word_and_sentence(group_id_state: gr.State) -> Tuple[str, str]:
+def get_word_and_sentence() -> Tuple[str, str]:
     """Fetch a random word and generate a practice sentence."""
-    global current_sentence, current_state, current_english_sentence
+    global current_sentence, current_state, current_english_sentence, group_id
     
     try:
-        # We already have a session_id from the URL parameters
+        # We already have a session_id and group_id from the URL parameters
         if not session_id:
             return "Error", "No session ID found. Please launch from the main app."
+            
+        if not group_id:
+            return "Error", "No group ID found. Please launch from the main app."
         
         # Fetch vocabulary from backend
+        logger.info(f"Fetching words for group_id: {group_id} (type: {type(group_id)})")
         response = requests.get(
-            "http://localhost:5000/api/study-activities/words",
-            params={"group_id": group_id_state.value}
+            "http://localhost:5100/api/study-activities/words",
+            params={"group_id": str(group_id)}  # Convert to string for URL params
         )
         
         if response.status_code != 200:
@@ -208,18 +217,53 @@ with gr.Blocks(title="German Writing Practice") as demo:
     group_id = gr.State(value=None)
     
     def load_session(request: gr.Request):
-        global session_id, current_state
-        # Get parameters from URL
-        params = request.query_params
-        session_id = params.get('session_id')
-        group_id = params.get('group_id')
-        if not session_id or not group_id:
-            raise ValueError("Missing session_id or group_id")
-        logger.info(f"Loading session {session_id} for group {group_id}")
-        current_state = AppState.PRACTICE
-        return session_id, group_id
+        global session_id, current_state, group_id
+        try:
+            # Get parameters from URL
+            params = request.query_params
+            logger.info(f"Attempting to load session with params: {params}")
+            
+            # Get session_id and group_id
+            session_id = params.get('session_id')
+            group_id = params.get('group_id')
+            
+            if not session_id or not group_id:
+                logger.warning("Missing session_id or group_id, showing welcome message")
+                return None, None
+            # Convert to integers
+            try:
+                session_id = int(session_id)
+                group_id = int(group_id)
+            except (TypeError, ValueError) as e:
+                logger.error(f"Invalid session_id or group_id: {e}")
+                return None, None
+
+            logger.info(f"Loading session {session_id} for group {group_id}")
+            current_state = AppState.PRACTICE
+            return session_id, group_id
+        except Exception as e:
+            logger.error(f"Error loading session: {str(e)}")
+            return None, None
     
-    demo.load(load_session, outputs=[session_id, group_id])
+    # Create welcome message
+    welcome_msg = gr.Markdown("""
+    # Welcome to German Writing Practice
+    
+    Please launch this app from the main application.
+    If you arrived here directly, go back and click the 'Launch' button.
+    """, visible=True)
+    
+    # Load session and hide welcome message if successful
+    def on_session_load(session_id, group_id):
+        if session_id and group_id:
+            return gr.update(visible=False)
+        return gr.update(visible=True)
+    
+    demo.load(load_session, outputs=[session_id, group_id]).then(
+        fn=on_session_load,
+        inputs=[session_id, group_id],
+        outputs=[welcome_msg]
+    )
     
     gr.Markdown("# German Writing Practice")
     
@@ -286,7 +330,7 @@ with gr.Blocks(title="German Writing Practice") as demo:
     
     new_word_btn.click(
         fn=get_word_and_sentence,
-        inputs=[group_id],
+        inputs=[],  # No inputs needed since we use global group_id
         outputs=[word_display, sentence_display]
     ).then(
         fn=on_new_question,
@@ -310,13 +354,21 @@ with gr.Blocks(title="German Writing Practice") as demo:
         outputs=[next_btn, canvas]
     )
 
-if __name__ == "__main__":
-    # Try different ports if the default one is in use
-    for port in range(8080, 8090):
-        try:
-            demo.launch(server_port=port, share=True)
-            break
-        except OSError:
-            if port == 8089:  # Last port to try
-                raise
-            continue
+if __name__ == '__main__':
+    # Disable analytics and telemetry
+    import os
+    os.environ['GRADIO_ANALYTICS_ENABLED'] = 'False'
+    demo.queue()
+    # Launch on a fixed port for consistency
+    demo.launch(
+        server_name='0.0.0.0',  # Listen on all ports
+        server_port=8000,  # Use consistent port
+        share=False,  # Disable public sharing
+        prevent_thread_lock=False,  # Keep the main thread alive
+        show_error=True,
+        debug=True
+    )
+    print("\nGradio app running at: http://localhost:8000")
+    
+    # Keep the app running
+    demo.block_thread()
