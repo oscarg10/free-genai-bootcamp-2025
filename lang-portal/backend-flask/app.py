@@ -38,8 +38,9 @@ def create_app(test_config=None):
         ENV='development'
     )
 
-    # Initialize database
-    app.db = Db(os.environ.get('DATABASE_URL', 'sqlite:///words.db'))
+    # Initialize database with absolute path
+    db_path = os.path.join(os.path.dirname(__file__), 'data', 'lang_portal.db')
+    app.db = Db(f'sqlite:///{db_path}')
     
     @app.teardown_appcontext
     def close_db(exception):
