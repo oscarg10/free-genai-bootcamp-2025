@@ -1,11 +1,15 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Optional
 import logging
+from datetime import datetime
+import sqlite3
+import uuid
 
-from src.agent import Agent
-from src.database import init_db
-from src.exceptions import LyricsError, LyricsNotFoundError, VocabularyError, StorageError
+from agent import Agent
+from database import init_db
+from exceptions import LyricsError, LyricsNotFoundError, VocabularyError, StorageError
 
 # Configure logging
 logging.basicConfig(
@@ -15,14 +19,35 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Song Vocabulary Extractor")
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, replace with specific origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 agent = Agent()
 
 class LyricsRequest(BaseModel):
-    message_request: str
+    song_title: str
+    artist: str
+    session_id: Optional[int] = None
+    study_activity_id: Optional[int] = None
+    external_session_id: Optional[int] = None
 
 class VocabularyItem(BaseModel):
     word: str
     context: str
+    
+    @classmethod
+    def from_dict(cls, item_dict: Dict[str, str]) -> 'VocabularyItem':
+        return cls(word=item_dict['word'], context=item_dict['context'])
+    
+    def dict(self) -> Dict[str, str]:
+        return {'word': self.word, 'context': self.context}
 
 class LyricsResponse(BaseModel):
     status: str
@@ -46,39 +71,74 @@ async def startup_event():
 @app.post("/api/agent", response_model=LyricsResponse)
 async def get_lyrics(request: LyricsRequest):
     try:
-        if not request.message_request or not request.message_request.strip():
-            raise HTTPException(
-                status_code=400,
-                detail="Message request cannot be empty"
-            )
+        # Initialize agent
+        agent = Agent()
         
-        logger.info(f"Processing request: {request.message_request}")
-        result = await agent.process_request(request.message_request)
+        # Get lyrics and vocabulary
+        lyrics = await agent.get_lyrics(request.song_title, request.artist)
+        vocabulary = await agent.get_vocabulary(lyrics)
         
-        if result["status"] == "error":
-            error_msg = result["error"]
-            status_code = 500  # Default to internal server error
-            
-            # Map specific errors to appropriate HTTP status codes
-            if "not found" in error_msg.lower():
-                status_code = 404
-            elif "timeout" in error_msg.lower():
-                status_code = 408
-            elif any(msg in error_msg.lower() for msg in ["empty", "invalid", "could not parse"]):
-                status_code = 400
+        # Generate song ID
+        song_id = str(uuid.uuid4())
+        
+        # Save results with proper transaction handling
+        with sqlite3.connect('data/vocab.db') as conn:
+            try:
+                conn.execute("BEGIN TRANSACTION")
+                cursor = conn.cursor()
                 
-            logger.error(f"Error processing request: {error_msg}")
-            raise HTTPException(
-                status_code=status_code,
-                detail={
-                    "error": error_msg,
-                    "lyrics": result.get("lyrics"),
-                    "vocabulary": result.get("vocabulary", [])
-                }
-            )
-        
-        logger.info(f"Successfully processed request for song: {result['title']}")
-        return LyricsResponse(**result)
+                try:
+                    # Create study session if needed
+                    session_id = None
+                    if request.study_activity_id:
+                        cursor.execute(
+                            """INSERT INTO study_sessions 
+                               (group_id, study_activity_id, external_session_id)
+                               VALUES (?, ?, ?)""",
+                            (1, request.study_activity_id, request.external_session_id)
+                        )
+                        session_id = cursor.lastrowid
+                    
+                    # Save song
+                    cursor.execute(
+                        "INSERT INTO songs (id, title, artist, lyrics) VALUES (?, ?, ?, ?)",
+                        (song_id, request.song_title, request.artist, lyrics)
+                    )
+                    
+                    # Save vocabulary items
+                    for item in vocabulary:
+                        cursor.execute(
+                            """INSERT INTO vocabulary 
+                               (word, context, song_id, song_title, artist, session_id)
+                               VALUES (?, ?, ?, ?, ?, ?)""",
+                            (item.word, item.context, song_id, request.song_title, 
+                             request.artist, session_id or request.session_id)
+                        )
+                    
+                    conn.commit()
+                    
+                    # Convert VocabularyItems to dicts for response
+                    vocab_dicts = [item.dict() for item in vocabulary]
+                    
+                    return LyricsResponse(
+                        status="success",
+                        song_id=song_id,
+                        title=request.song_title,
+                        artist=request.artist,
+                        lyrics=lyrics,
+                        vocabulary=vocab_dicts,
+                        total_words=len(vocabulary)
+                    )
+                    
+                except Exception as e:
+                    conn.rollback()
+                    raise e
+                finally:
+                    cursor.close()
+                    
+            except Exception as e:
+                logger.error(f"Database error: {str(e)}")
+                raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
         
     except LyricsNotFoundError as e:
         logger.error(f"Lyrics not found: {str(e)}")
@@ -117,6 +177,68 @@ async def get_agent_thoughts():
             status_code=500,
             detail=f"Error retrieving thought history: {str(e)}"
         )
+
+# Database connection helper
+def get_db():
+    try:
+        conn = sqlite3.connect('vocabulary.db')
+        conn.row_factory = sqlite3.Row
+        try:
+            yield conn
+        finally:
+            conn.close()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@app.post("/api/sessions")
+async def create_session(group_id: int):
+    try:
+        with sqlite3.connect('data/vocab.db') as conn:
+            try:
+                cursor = conn.cursor()
+                cursor.execute("BEGIN TRANSACTION")
+                cursor.execute(
+                    "INSERT INTO study_sessions (group_id, created_at) VALUES (?, ?)",
+                    (group_id, datetime.utcnow().isoformat())
+                )
+                session_id = cursor.lastrowid
+                conn.commit()
+                return {"session_id": session_id}
+            except Exception as e:
+                conn.rollback()
+                raise e
+            finally:
+                cursor.close()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/sessions/{session_id}/vocabulary")
+async def get_session_vocabulary(session_id: int):
+    try:
+        with sqlite3.connect('data/vocab.db') as conn:
+            try:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT word, context, song_title, artist 
+                    FROM vocabulary 
+                    WHERE session_id = ?
+                """, (session_id,))
+                vocab = cursor.fetchall()
+                return {
+                    "vocabulary": [
+                        {
+                            "word": row["word"],
+                            "context": row["context"],
+                            "song_title": row["song_title"],
+                            "artist": row["artist"]
+                        } for row in vocab
+                    ]
+                }
+            finally:
+                cursor.close()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

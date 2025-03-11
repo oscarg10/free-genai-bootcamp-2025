@@ -4,13 +4,18 @@ from flask import g
 import os
 
 class Db:
-  def __init__(self, database_url='sqlite:///words.db'):
+  def __init__(self, database_url='sqlite:///data/lang_portal.db'):
     # Extract the database path from the URL
     if database_url.startswith('sqlite:///'):
       self.database = database_url[10:]  # Remove 'sqlite:///'
     else:
       self.database = database_url
     self.connection = None
+    
+    # Create data directory if it doesn't exist
+    data_dir = os.path.dirname(self.database)
+    if data_dir and not os.path.exists(data_dir):
+      os.makedirs(data_dir)
 
   def get(self):
     if 'db' not in g:
@@ -18,6 +23,8 @@ class Db:
       db_path = os.path.abspath(self.database)
       g.db = sqlite3.connect(db_path)
       g.db.row_factory = sqlite3.Row  # Return rows as dictionaries
+      # Enable foreign key support
+      g.db.execute('PRAGMA foreign_keys = ON')
     return g.db
 
   def commit(self):
