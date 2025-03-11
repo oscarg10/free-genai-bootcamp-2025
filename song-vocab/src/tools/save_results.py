@@ -3,8 +3,8 @@ import json
 import logging
 import os
 from pathlib import Path
-from src.database import save_song, save_vocabulary_items
-from src.exceptions import StorageError
+from database import save_song, save_vocabulary_items
+from exceptions import StorageError
 
 logger = logging.getLogger('song_vocab')
 

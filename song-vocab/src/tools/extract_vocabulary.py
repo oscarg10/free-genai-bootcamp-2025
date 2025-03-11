@@ -5,7 +5,7 @@ import httpx
 from pydantic import BaseModel
 import logging
 from ollama import AsyncClient
-from src.exceptions import VocabularyError
+from exceptions import VocabularyError
 
 # Ollama configuration
 OLLAMA_HOST = 'http://localhost:11434'

@@ -183,7 +183,7 @@ async def test_pipeline():
     )
     
     # Initialize database
-    from src.database import init_db
+    from database import init_db
     init_db()
     
     # Test song
