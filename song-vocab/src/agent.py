@@ -1,10 +1,11 @@
 from typing import List, Dict, Any
 import logging
-from src.tools.search_web import search_lyrics
-from src.tools.extract_vocabulary import extract_vocabulary, VocabularyItem
-from src.tools.generate_song_id import generate_song_id
-from src.tools.save_results import save_results
-from src.exceptions import LyricsError, LyricsNotFoundError, VocabularyError, StorageError
+import asyncio
+from tools.search_web import search_lyrics
+from tools.extract_vocabulary import extract_vocabulary, VocabularyItem
+from tools.generate_song_id import generate_song_id
+from tools.save_results import save_results
+from exceptions import LyricsError, LyricsNotFoundError, VocabularyError, StorageError
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,48 @@ class Agent:
         self._add_thought(f"Using entire input as title: {message}")
         return message.strip(), ""
 
+    async def get_lyrics(self, song_title: str, artist: str) -> str:
+        """Get lyrics for a specific song"""
+        try:
+            self._add_thought(f"Looking for lyrics of '{song_title}' by '{artist}'")
+            
+            # Search for lyrics with timeout
+            search_results = await search_lyrics(song_title, artist, timeout=10)
+            if not search_results:
+                raise LyricsNotFoundError(f"No lyrics found for '{song_title}' by '{artist}'")
+                
+            lyrics = search_results[0].get('lyrics', '')
+            if not lyrics:
+                raise LyricsError("Empty lyrics returned from search")
+                
+            self._add_thought("Successfully found lyrics")
+            return lyrics
+            
+        except asyncio.TimeoutError:
+            raise LyricsError("Lyrics search timed out")
+        except LyricsNotFoundError as e:
+            raise LyricsError(str(e))
+        except Exception as e:
+            raise LyricsError(f"Error searching for lyrics: {str(e)}")
+    
+    async def get_vocabulary(self, lyrics: str) -> List[VocabularyItem]:
+        """Extract vocabulary from lyrics"""
+        try:
+            self._add_thought("Extracting vocabulary from lyrics")
+            
+            # Extract vocabulary with timeout
+            vocab_items = await extract_vocabulary(lyrics, timeout=5)
+            if not vocab_items:
+                raise VocabularyError("No vocabulary items extracted")
+                
+            self._add_thought(f"Extracted {len(vocab_items)} vocabulary items")
+            return vocab_items
+            
+        except asyncio.TimeoutError:
+            raise VocabularyError("Vocabulary extraction timed out")
+        except Exception as e:
+            raise VocabularyError(f"Error extracting vocabulary: {str(e)}")
+    
     async def process_request(self, message: str) -> Dict[str, Any]:
         """
         Process a song request using the reAct framework:
