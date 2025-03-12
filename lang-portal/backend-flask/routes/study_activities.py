@@ -40,6 +40,36 @@ def proxy_to_song_vocab(method, endpoint, json=None, params=None):
         logger.error(f"Error proxying to song-vocab: {str(e)}")
         raise
 
+def get_activity_type(url: str) -> str:
+    """Determine activity type based on URL pattern."""
+    if 'localhost:7860' in url:
+        return 'writing'
+    elif 'localhost:8000' in url:
+        return 'song'
+    elif 'localhost:8501' in url:
+        return 'listening'
+    else:
+        return 'typing'
+
+def update_activity_url(app, activity_name: str, new_url: str):
+    """Update the URL of a study activity using proper SQLite3 practices."""
+    with app.db as conn:
+        try:
+            conn.execute("BEGIN TRANSACTION")
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE study_activities SET url = ? WHERE name = ?",
+                (new_url, activity_name)
+            )
+            conn.commit()
+            logger.info(f"Updated URL for {activity_name} to {new_url}")
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Error updating activity URL: {str(e)}")
+            raise e
+        finally:
+            cursor.close()
+
 def load(app):
 
     @app.route('/api/debug/db', methods=['GET'])
@@ -82,7 +112,8 @@ def load(app):
             'id': activity['id'],
             'title': activity['name'],
             'launch_url': activity['url'],
-            'preview_url': activity['preview_url']
+            'preview_url': activity['preview_url'],
+            'activity_type': get_activity_type(activity['url'])
         } for activity in activities])
 
     @app.route('/api/study-activities/<int:id>', methods=['GET'])
@@ -99,7 +130,8 @@ def load(app):
             'id': activity['id'],
             'title': activity['name'],
             'launch_url': activity['url'],
-            'preview_url': activity['preview_url']
+            'preview_url': activity['preview_url'],
+            'activity_type': get_activity_type(activity['url'])
         })
 
     @app.route('/api/study-activities/<int:id>/sessions', methods=['GET'])
@@ -176,23 +208,28 @@ def load(app):
             
             if not activity:
                 return jsonify({'error': 'Activity not found'}), 404
-        
-            # Get available groups
-            cursor.execute('SELECT id, name FROM groups')
-            groups = cursor.fetchall()
-        
-            return jsonify({
+
+            activity_type = get_activity_type(activity['url'])
+            response = {
                 'activity': {
                     'id': activity['id'],
                     'title': activity['name'],
                     'launch_url': activity['url'],
-                    'preview_url': activity['preview_url']
-                },
-                'groups': [{
+                    'preview_url': activity['preview_url'],
+                    'activity_type': activity_type
+                }
+            }
+            
+            # Only fetch groups for typing activity
+            if activity_type == 'typing':
+                cursor.execute('SELECT id, name FROM groups')
+                groups = cursor.fetchall()
+                response['groups'] = [{
                     'id': group['id'],
                     'name': group['name']
                 } for group in groups]
-            })
+        
+            return jsonify(response)
         except Exception as e:
             return jsonify({'error': str(e)}), 500
 
@@ -200,24 +237,44 @@ def load(app):
     @cross_origin()
     def get_study_activity_words():
         try:
-            # Get group_id from query parameters
-            group_id = request.args.get('group_id')
-            if group_id is None:
-                return jsonify({'error': 'group_id is required'}), 400
-                
+            # Get group_id from query parameters, default to group 1
+            group_id = request.args.get('group_id', '1')
             try:
                 group_id = int(group_id)
             except (TypeError, ValueError):
                 return jsonify({'error': 'group_id must be a number'}), 400
 
-            # Get words for the group
-            cursor = app.db.cursor()
-            cursor.execute('''
-                SELECT w.* FROM words w
-                JOIN word_groups gw ON w.id = gw.word_id
-                WHERE gw.group_id = ?
-            ''', (group_id,))
-            words = cursor.fetchall()
+            # Get words for the group using proper transaction handling
+            with app.db.get() as connection:
+                cursor = connection.cursor()
+                try:
+                    # Begin transaction
+                    connection.execute('BEGIN TRANSACTION')
+
+                    # First check if the group exists
+                    cursor.execute(
+                        'SELECT id FROM groups WHERE id = ?',
+                        (group_id,)
+                    )
+                    if not cursor.fetchone():
+                        connection.rollback()
+                        return jsonify({'error': 'Group not found'}), 404
+
+                    # Get words for the group
+                    cursor.execute('''
+                        SELECT w.* FROM words w
+                        JOIN word_groups gw ON w.id = gw.word_id
+                        WHERE gw.group_id = ?
+                    ''', (group_id,))
+                    words = cursor.fetchall()
+
+                    # Commit transaction
+                    connection.commit()
+                except Exception as e:
+                    connection.rollback()
+                    raise e
+                finally:
+                    cursor.close()
 
             if not words:
                 return jsonify({'error': 'No words found for this group'}), 404

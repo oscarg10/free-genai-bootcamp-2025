@@ -6,12 +6,18 @@ from pathlib import Path
 def init_db():
     # Get the absolute path to the database file
     base_dir = Path(__file__).resolve().parent
-    db_path = base_dir / 'words.db'
+    data_dir = base_dir / 'data'
+    
+    # Create data directory if it doesn't exist
+    data_dir.mkdir(exist_ok=True)
+    
+    db_path = data_dir / 'lang_portal.db'
     
     print(f"Initializing database at: {db_path}")
     
     # Connect to database (this will create it if it doesn't exist)
     conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     
     # Execute all setup SQL files in order
@@ -24,13 +30,14 @@ def init_db():
         'create_table_study_sessions.sql',
         'create_table_study_activities.sql',
         'create_table_word_review_items.sql',
-        'insert_study_activities.sql'  # Add this line to execute our inserts
+        'insert_study_activities.sql'
     ]
     
     for sql_file in sql_files:
         print(f"Executing {sql_file}...")
         with open(setup_dir / sql_file, 'r') as f:
             cursor.executescript(f.read())
+            
     # Insert sample data
     print("Inserting sample data...")
     

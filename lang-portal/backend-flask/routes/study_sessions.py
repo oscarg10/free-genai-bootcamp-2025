@@ -2,6 +2,7 @@ from flask import request, jsonify, g
 from flask_cors import cross_origin
 from datetime import datetime
 import math
+import sqlite3
 
 def load(app):
   @app.route('/api/study-sessions', methods=['POST'])
@@ -11,45 +12,65 @@ def load(app):
       # Parse the JSON request body
       data = request.get_json()
 
-      # Extract the group_id from the request
+      # Extract parameters
       group_id = data.get('group_id')
       study_activity_id = data.get('study_activity_id')
 
-      # Validate that group_id is provided
-      if not group_id:
-        return jsonify({"error": "group_id is required"}), 400
-
-      # Validate that study_id is provided
+      # Validate study_activity_id
       if not study_activity_id:
         return jsonify({"error": "study_activity_id is required"}), 400
 
-      # Check if the group exists
-      cursor = app.db.cursor()
-      cursor.execute('SELECT id FROM groups WHERE id = ?', (group_id,))
-      group = cursor.fetchone()
-      if not group:
-        return jsonify({"error": "Group not found"}), 404
+      # Use context manager for database connection
+      with app.db.get() as connection:
+        cursor = connection.cursor()
+        try:
+          # Begin transaction
+          connection.execute('BEGIN TRANSACTION')
 
-      # Check if the study_activity exists
-      cursor.execute('SELECT id FROM study_activities WHERE id = ?', (study_activity_id,))
-      study_activity = cursor.fetchone()
-      if not study_activity:
-        return jsonify({"error": "Study activity not found"}), 404
+          # Check if the group exists if group_id is provided
+          if group_id is not None:
+            cursor.execute(
+              'SELECT id FROM groups WHERE id = ?',
+              (group_id,)
+            )
+            if not cursor.fetchone():
+              connection.rollback()
+              return jsonify({"error": "Group not found"}), 404
 
-      # Insert the study session
-      cursor.execute('''
-        INSERT INTO study_sessions (group_id, study_activity_id, created_at)
-        VALUES (?, ?, ?)
-      ''', (group_id, study_activity_id, datetime.now()))
-      
-      app.db.commit()
-      
-      # Get the id of the newly created session
-      session_id = cursor.lastrowid
+          # Check if the study_activity exists
+          cursor.execute(
+            'SELECT id FROM study_activities WHERE id = ?',
+            (study_activity_id,)
+          )
+          if not cursor.fetchone():
+            connection.rollback()
+            return jsonify({"error": "Study activity not found"}), 404
 
-      return jsonify({"session_id": session_id}), 201
+          # Insert the study session
+          cursor.execute('''
+            INSERT INTO study_sessions
+              (group_id, study_activity_id, created_at)
+            VALUES (?, ?, ?)
+          ''', (group_id, study_activity_id, datetime.now()))
+
+          # Get the id of the newly created session
+          session_id = cursor.lastrowid
+
+          # Commit transaction
+          connection.commit()
+
+          return jsonify({"session_id": session_id}), 201
+
+        except (sqlite3.Error, Exception) as e:
+          # Rollback on any error
+          connection.rollback()
+          return jsonify({"error": str(e)}), 500
+
+        finally:
+          cursor.close()
+
     except Exception as e:
-      return jsonify({"error": str(e)}), 500
+      return jsonify({"error": f"Request error: {str(e)}"}), 400
 
   @app.route('/api/study-sessions', methods=['GET'])
   @cross_origin()
@@ -66,7 +87,7 @@ def load(app):
       cursor.execute('''
         SELECT COUNT(*) as count 
         FROM study_sessions ss
-        JOIN groups g ON g.id = ss.group_id
+        LEFT JOIN groups g ON g.id = ss.group_id
         JOIN study_activities sa ON sa.id = ss.study_activity_id
       ''')
       total_count = cursor.fetchone()['count']
@@ -82,7 +103,7 @@ def load(app):
           ss.created_at,
           COUNT(wri.id) as review_items_count
         FROM study_sessions ss
-        JOIN groups g ON g.id = ss.group_id
+        LEFT JOIN groups g ON g.id = ss.group_id
         JOIN study_activities sa ON sa.id = ss.study_activity_id
         LEFT JOIN word_review_items wri ON wri.study_session_id = ss.id
         GROUP BY ss.id
@@ -127,7 +148,7 @@ def load(app):
           ss.created_at,
           0 as review_items_count
         FROM study_sessions ss
-        JOIN groups g ON g.id = ss.group_id
+        LEFT JOIN groups g ON g.id = ss.group_id
         JOIN study_activities sa ON sa.id = ss.study_activity_id
         WHERE ss.id = ?
       ''', (id,))

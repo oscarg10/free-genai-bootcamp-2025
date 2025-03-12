@@ -138,12 +138,7 @@ export interface GroupWordsResponse {
   current_page: number;
 }
 
-export async function fetchGroupDetails(
-  groupId: number,
-  page: number = 1,
-  sortBy: string = 'german',
-  order: 'asc' | 'desc' = 'asc'
-): Promise<GroupDetails> {
+export async function fetchGroupDetails(groupId: number): Promise<GroupDetails> {
   const response = await fetch(
     `${API_BASE_URL}/groups/${groupId}`
   );
@@ -216,7 +211,7 @@ export async function createWord(word: {
 
 // Study Session API
 export async function createStudySession(
-  groupId: number,
+  groupId: number | undefined,
   studyActivityId: number
 ): Promise<{ session_id: number }> {
   const response = await fetch(`${API_BASE_URL}/api/study-sessions`, {
