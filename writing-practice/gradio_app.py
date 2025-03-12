@@ -362,13 +362,13 @@ if __name__ == '__main__':
     # Launch on a fixed port for consistency
     demo.launch(
         server_name='0.0.0.0',  # Listen on all ports
-        server_port=8000,  # Use consistent port
+        server_port=7860,  # Use Gradio's default port to avoid conflicts
         share=False,  # Disable public sharing
         prevent_thread_lock=False,  # Keep the main thread alive
         show_error=True,
         debug=True
     )
-    print("\nGradio app running at: http://localhost:8000")
+    print("\nGradio app running at: http://localhost:7860")
     
     # Keep the app running
     demo.block_thread()

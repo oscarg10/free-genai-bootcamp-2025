@@ -27,8 +27,23 @@ class Db:
       g.db.execute('PRAGMA foreign_keys = ON')
     return g.db
 
+  def __enter__(self):
+    return self.get()
+
+  def __exit__(self, exc_type, exc_val, exc_tb):
+    if exc_type is not None:
+      # An error occurred, rollback
+      self.get().rollback()
+    self.close()
+
   def commit(self):
     self.get().commit()
+
+  def rollback(self):
+    self.get().rollback()
+
+  def begin_transaction(self):
+    self.get().execute('BEGIN TRANSACTION')
 
   def cursor(self):
     # Ensure the connection is valid before getting a cursor
