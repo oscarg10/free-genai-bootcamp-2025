@@ -6,6 +6,7 @@ import logging
 from datetime import datetime
 import sqlite3
 import uuid
+from contextlib import asynccontextmanager
 
 from agent import Agent
 from database import init_db
@@ -18,7 +19,20 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Song Vocabulary Extractor")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan events for FastAPI app."""
+    # Startup
+    init_db()
+    logger.info("Database initialized")
+    yield
+    # Shutdown
+    pass
+
+app = FastAPI(
+    title="Song Vocabulary Extractor",
+    lifespan=lifespan
+)
 
 # Configure CORS
 app.add_middleware(
@@ -63,10 +77,18 @@ class LyricsResponse(BaseModel):
 class ThoughtResponse(BaseModel):
     thoughts: List[str]
 
-@app.on_event("startup")
-async def startup_event():
-    init_db()
-    logger.info("Database initialized")
+@app.get("/")
+async def root():
+    """Root endpoint that returns API information."""
+    return {
+        "name": "Song Vocabulary Extractor API",
+        "version": "1.0",
+        "endpoints": {
+            "/api/agent": "Extract vocabulary from song lyrics",
+            "/api/thoughts": "Get agent's thought process history",
+            "/api/sessions": "Create a new study session",
+        }
+    }
 
 @app.post("/api/agent", response_model=LyricsResponse)
 async def get_lyrics(request: LyricsRequest):
