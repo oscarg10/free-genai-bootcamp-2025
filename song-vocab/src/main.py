@@ -1,20 +1,27 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware import Middleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Dict, Optional
 import logging
 from datetime import datetime
 import sqlite3
 import uuid
+import os
 from contextlib import asynccontextmanager
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from agent import Agent
 from database import init_db
 from exceptions import LyricsError, LyricsNotFoundError, VocabularyError, StorageError
+from config import settings
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=getattr(logging, settings.LOG_LEVEL),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
@@ -22,26 +29,71 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan events for FastAPI app."""
-    # Startup
-    init_db()
-    logger.info("Database initialized")
-    yield
-    # Shutdown
-    pass
+    try:
+        # Startup
+        init_db()
+        logger.info("Database initialized")
+        yield
+    except Exception as e:
+        logger.error(f"Error during startup: {e}")
+        raise
+    finally:
+        # Shutdown - close any resources if needed
+        logger.info("Shutting down application")
+        pass
+
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address)
+
+# Configure allowed origins
+def get_allowed_origins():
+    # Create origins for localhost and 127.0.0.1 with all dev ports
+    dev_origins = [
+        f"http://localhost:{port}" for port in settings.DEV_PORTS.split(",")
+    ] + [
+        f"http://127.0.0.1:{port}" for port in settings.DEV_PORTS.split(",")
+    ]
+    
+    # Add production URL if specified
+    if settings.FRONTEND_URL:
+        dev_origins.append(settings.FRONTEND_URL)
+        
+    return dev_origins
+
+ALLOWED_ORIGINS = get_allowed_origins()
+
+# Configure middleware
+middleware = [
+    Middleware(
+        CORSMiddleware,
+        allow_origins=ALLOWED_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["*"],
+        expose_headers=["X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
+    )
+]
 
 app = FastAPI(
-    title="Song Vocabulary Extractor",
-    lifespan=lifespan
+    title=settings.PROJECT_NAME,
+    description=settings.DESCRIPTION,
+    version=settings.VERSION,
+    lifespan=lifespan,
+    middleware=middleware
 )
 
-# Configure CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Add rate limiter to app
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Add custom exception handlers
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "An unexpected error occurred. Please try again later."}
+    )
 
 agent = Agent()
 
@@ -90,7 +142,8 @@ async def root():
         }
     }
 
-@app.post("/api/agent", response_model=LyricsResponse)
+@app.post(f"{settings.API_V1_PREFIX}/agent", response_model=LyricsResponse)
+@limiter.limit(settings.RATE_LIMIT_AGENT)
 async def get_lyrics(request: LyricsRequest):
     try:
         # Initialize agent
@@ -186,7 +239,8 @@ async def get_lyrics(request: LyricsRequest):
             detail=f"An unexpected error occurred: {str(e)}"
         )
 
-@app.get("/api/thoughts", response_model=ThoughtResponse)
+@app.get(f"{settings.API_V1_PREFIX}/thoughts", response_model=ThoughtResponse)
+@limiter.limit(settings.RATE_LIMIT_THOUGHTS)
 async def get_agent_thoughts():
     """Get the agent's thought process history"""
     try:

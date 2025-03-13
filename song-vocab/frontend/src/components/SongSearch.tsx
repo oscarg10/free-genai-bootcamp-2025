@@ -31,7 +31,7 @@ const SongSearch: React.FC<SongSearchProps> = ({ onSongFound }) => {
         setLoading(true);
 
         try {
-            const response = await axios.post('http://localhost:8000/api/agent', {
+            const response = await axios.post('http://localhost:8000/api/v1/agent', {
                 song_title: title,
                 artist: artist
             });
@@ -46,9 +46,13 @@ const SongSearch: React.FC<SongSearchProps> = ({ onSongFound }) => {
                 position: 'top-right',
             });
         } catch (error: any) {
+            const errorMessage = error.response?.status === 429
+                ? 'Too many requests. Please wait a minute and try again.'
+                : error.response?.data?.detail || 'Failed to find song';
+
             toast({
                 title: 'Error',
-                description: error.response?.data?.detail || 'Failed to find song',
+                description: errorMessage,
                 status: 'error',
                 duration: 5000,
                 isClosable: true,
