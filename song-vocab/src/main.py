@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException, Depends, Request, Response
+from fastapi import FastAPI, HTTPException, Depends, Response
+from starlette.requests import Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware import Middleware
 from fastapi.responses import JSONResponse
@@ -13,6 +14,7 @@ from contextlib import asynccontextmanager
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from agent import Agent
 from database import init_db
@@ -84,6 +86,7 @@ app = FastAPI(
 
 # Add rate limiter to app
 app.state.limiter = limiter
+app.add_middleware(SlowAPIMiddleware)
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Add custom exception handlers
@@ -144,13 +147,13 @@ async def root():
 
 @app.post(f"{settings.API_V1_PREFIX}/agent", response_model=LyricsResponse)
 @limiter.limit(settings.RATE_LIMIT_AGENT)
-async def get_lyrics(request: LyricsRequest):
+async def get_lyrics(request: Request, lyrics_request: LyricsRequest):
     try:
         # Initialize agent
         agent = Agent()
         
         # Get lyrics and vocabulary
-        lyrics = await agent.get_lyrics(request.song_title, request.artist)
+        lyrics = await agent.get_lyrics(lyrics_request.song_title, lyrics_request.artist)
         vocabulary = await agent.get_vocabulary(lyrics)
         
         # Generate song ID
@@ -165,19 +168,19 @@ async def get_lyrics(request: LyricsRequest):
                 try:
                     # Create study session if needed
                     session_id = None
-                    if request.study_activity_id:
+                    if lyrics_request.study_activity_id:
                         cursor.execute(
                             """INSERT INTO study_sessions 
                                (group_id, study_activity_id, external_session_id)
                                VALUES (?, ?, ?)""",
-                            (1, request.study_activity_id, request.external_session_id)
+                            (1, lyrics_request.study_activity_id, lyrics_request.external_session_id)
                         )
                         session_id = cursor.lastrowid
                     
                     # Save song
                     cursor.execute(
                         "INSERT INTO songs (id, title, artist, lyrics) VALUES (?, ?, ?, ?)",
-                        (song_id, request.song_title, request.artist, lyrics)
+                        (song_id, lyrics_request.song_title, lyrics_request.artist, lyrics)
                     )
                     
                     # Save vocabulary items
@@ -186,8 +189,8 @@ async def get_lyrics(request: LyricsRequest):
                             """INSERT INTO vocabulary 
                                (word, context, song_id, song_title, artist, session_id)
                                VALUES (?, ?, ?, ?, ?, ?)""",
-                            (item.word, item.context, song_id, request.song_title, 
-                             request.artist, session_id or request.session_id)
+                            (item.word, item.context, song_id, lyrics_request.song_title, 
+                             lyrics_request.artist, session_id or lyrics_request.session_id)
                         )
                     
                     conn.commit()
@@ -198,8 +201,8 @@ async def get_lyrics(request: LyricsRequest):
                     return LyricsResponse(
                         status="success",
                         song_id=song_id,
-                        title=request.song_title,
-                        artist=request.artist,
+                        title=lyrics_request.song_title,
+                        artist=lyrics_request.artist,
                         lyrics=lyrics,
                         vocabulary=vocab_dicts,
                         total_words=len(vocabulary)
@@ -241,7 +244,7 @@ async def get_lyrics(request: LyricsRequest):
 
 @app.get(f"{settings.API_V1_PREFIX}/thoughts", response_model=ThoughtResponse)
 @limiter.limit(settings.RATE_LIMIT_THOUGHTS)
-async def get_agent_thoughts():
+async def get_agent_thoughts(request: Request):
     """Get the agent's thought process history"""
     try:
         thoughts = agent.get_thought_history()
