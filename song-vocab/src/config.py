@@ -1,5 +1,5 @@
 """Configuration management for the Song Vocabulary application."""
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
 import os
 from functools import lru_cache
@@ -25,9 +25,14 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    # Environment
+    ENV: str = "development"
+    DEBUG: bool = False
+    
+    # External Services
+    SERPAPI_KEY: str
+    
+    model_config = SettingsConfigDict(env_file='.env', case_sensitive=True)
 
 @lru_cache()
 def get_settings() -> Settings:
