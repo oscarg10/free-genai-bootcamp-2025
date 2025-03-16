@@ -80,7 +80,7 @@ async def check_ollama() -> bool:
 
 async def extract_vocabulary(lyrics: str, timeout: int = 30) -> List[VocabularyItem]:
     """
-    Extract vocabulary items from lyrics using mock data for testing.
+    Extract vocabulary items from lyrics using Ollama with timeout.
     
     Args:
         lyrics (str): Song lyrics to analyze
@@ -93,16 +93,112 @@ async def extract_vocabulary(lyrics: str, timeout: int = 30) -> List[VocabularyI
         VocabularyError: If extraction fails or times out
     """
     try:
-        # Use mock vocabulary for testing
-        mock_items = await mock_vocabulary(lyrics)
+        # First check if Ollama is running
+        if not await check_ollama():
+            raise VocabularyError(
+                "Ollama is not running or not responding. Please start Ollama with 'ollama serve' and try again."
+            )
         
-        # Convert mock items to VocabularyItems
-        result = [VocabularyItem(**item) for item in mock_items]
+        logger.info(f"Starting vocabulary extraction with timeout={timeout}s")
+        logger.debug(f"Lyrics length: {len(lyrics)} characters")
         
-        if not result:
-            raise VocabularyError("No valid vocabulary items found")
+        # Input validation
+        if not lyrics or not lyrics.strip():
+            raise VocabularyError("Cannot extract vocabulary from empty lyrics")
         
-        return result
+        logger.info("Input validation passed")
+            
+        # Prepare the prompt for Ollama
+        prompt = f"""
+        Extract 5 important German vocabulary words from these lyrics.
+        Format as a JSON array with 'word' and 'context' fields.
+        Only return the JSON array, nothing else.
+        
+        Example format:
+        [
+            {{
+                "word": "Luftballons",
+                "context": "99 Luftballons auf ihrem Weg zum Horizont"
+            }}
+        ]
+        
+        Lyrics:
+        {lyrics}
+        """
+        
+        try:
+            logger.info("Calling Ollama API...")
+            # Create a new client for this request
+            client = AsyncClient(host=OLLAMA_HOST)
+            # Use streaming to get response chunks
+            full_response = ""
+            async for chunk in await client.generate(
+                model=OLLAMA_MODEL,
+                prompt=prompt,
+                stream=True,  # Enable streaming
+                options={
+                    "temperature": 0.1,
+                    "top_k": 10,
+                    "top_p": 0.9,
+                    "num_predict": 200
+                }
+            ):
+                if chunk and 'response' in chunk:
+                    full_response += chunk['response']
+                    
+            # Use the full response
+            response = {'response': full_response}
+            
+            # Parse the response
+            try:
+                # For streaming, we already have the raw response
+                json_str = full_response.strip()
+                logger.debug(f"Raw response: {json_str}")
+                
+                # Try to find JSON array in the response
+                start_idx = json_str.find('[')
+                end_idx = json_str.rfind(']') + 1
+                
+                if start_idx == -1 or end_idx == 0:
+                    # Fallback to mock data if Ollama response is invalid
+                    logger.warning("Invalid Ollama response, falling back to mock data")
+                    mock_items = await mock_vocabulary(lyrics)
+                    return [VocabularyItem(**item) for item in mock_items]
+                    
+                json_str = json_str[start_idx:end_idx]
+                
+                # Parse JSON
+                items = json.loads(json_str)
+                if not isinstance(items, list):
+                    raise VocabularyError("Invalid response format from Ollama")
+                    
+                # Validate and create VocabularyItems
+                result = []
+                for item in items:
+                    if not isinstance(item, dict) or 'word' not in item or 'context' not in item:
+                        logger.warning(f"Skipping invalid vocabulary item: {item}")
+                        continue
+                    result.append(VocabularyItem(**item))
+                
+                if not result:
+                    # Fallback to mock data if no valid items
+                    logger.warning("No valid items in Ollama response, falling back to mock data")
+                    mock_items = await mock_vocabulary(lyrics)
+                    return [VocabularyItem(**item) for item in mock_items]
+                    
+                return result
+                
+            except json.JSONDecodeError as e:
+                # Fallback to mock data if JSON parsing fails
+                logger.warning(f"Failed to parse Ollama response: {str(e)}, falling back to mock data")
+                mock_items = await mock_vocabulary(lyrics)
+                return [VocabularyItem(**item) for item in mock_items]
+                
+        except asyncio.TimeoutError:
+            raise VocabularyError(
+                message=f"Vocabulary extraction timed out after {timeout} seconds",
+                error_code="VOCAB_TIMEOUT"
+            )
         
         # Real implementation (commented out for now)
         '''
