@@ -2,24 +2,25 @@ networks:
   megaservice_network:
     driver: bridge
 services:
-  megaservice:
-   build:
-     context: .
-     dockerfile: Dockerfile
-   container_name: megaservice
-   #depends_on:
-   #  - redis-vector-db
-   #  - tei-embedding-service
-   #  - retriever
-   #  - tei-reranking-service
-   #  - vllm-service
-   ports:
-     - "8888:8888"
-   ipc: host
-   restart: always
+  #megaservice:
+  #  build:
+  #    context: .
+  #    dockerfile: Dockerfile
+  #  container_name: megaservice
+  #  #depends_on:
+  #  #  - redis-vector-db
+  #  #  - tei-embedding-service
+  #  #  - retriever
+  #  #  - tei-reranking-service
+  #  #  - vllm-service
+  #  ports:
+  #    - "8888:8888"
+  #  ipc: host
+  #  restart: always
   speecht5-service:
     image: ${REGISTRY:-opea}/speecht5:${TAG:-latest}
     container_name: speecht5-service
+    platform: linux/amd64
     ports:
       - ${SPEECHT5_PORT:-7055}:7055
     ipc: host
@@ -33,7 +34,7 @@ services:
       interval: 10s
       timeout: 6s
       retries: 18
-  # tts-speecht5:
+  #tts-speecht5:
   #  image: ${REGISTRY:-opea}/tts:${TAG:-latest}
   #  container_name: tts-speecht5-service
   #  ports:
@@ -47,8 +48,8 @@ services:
   #      condition: service_healthy
   gptsovits-service:
     image: ${REGISTRY:-opea}/gpt-sovits:${TAG:-latest}
-    platform: linux/amd64
     container_name: gpt-sovits-service
+    platform: linux/amd64
     ports:
       - ${GPT_SOVITS_PORT:-9880}:9880
     ipc: host
@@ -58,22 +59,16 @@ services:
       no_proxy: ${no_proxy}
       http_proxy: ${http_proxy}
       https_proxy: ${https_proxy}
-      PYTORCH_CUDA_ALLOC_CONF: max_split_size_mb=256
-    deploy:
-      resources:
-        limits:
-          memory: 4G
-        reservations:
-          memory: 2G
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9880/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: 10s
+      timeout: 6s
+      retries: 18
   tts-gptsovits:
     image: ${REGISTRY:-opea}/tts:${TAG:-latest}
     container_name: tts-gptsovits-service
+    platform: linux/amd64
     ports:
       - ${TTS_PORT:-9088}:9088
     ipc: host
