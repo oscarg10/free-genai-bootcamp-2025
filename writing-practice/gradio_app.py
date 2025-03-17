@@ -1,5 +1,6 @@
 # Disable HuggingFace telemetry
 import os
+import dotenv
 os.environ['HF_HUB_DISABLE_TELEMETRY'] = '1'
 os.environ['GRADIO_ANALYTICS_ENABLED'] = 'False'
 
@@ -7,20 +8,96 @@ import gradio as gr
 import requests
 import random
 import logging
-from typing import Tuple, Dict, Any
+from typing import Tuple, Dict, Any, Optional
 from transformers import pipeline, set_seed
 import torch
-import easyocr
-import numpy as np
 from difflib import SequenceMatcher
 from enum import Enum
 
+# Load environment variables
+dotenv.load_dotenv(override=True)
+
 # Setup logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
 )
 logger = logging.getLogger(__name__)
+
+# API configuration
+OLLAMA_API_URL = 'http://localhost:11434/api/generate'
+
+def get_english_word(word_type: str) -> Tuple[str, str]:
+    """Get a natural English word and generate a sentence using Ollama."""
+    prompt = f"""First generate a common {word_type} in English that would be good for language learning.
+    Then generate a simple natural sentence using that word.
+    The sentence should be:
+    1. Easy to understand
+    2. Suitable for language learning
+    3. Use common vocabulary
+    4. Be between 5-10 words
+    5. Use present tense
+
+    Format your response exactly like this example:
+    word: cat
+    sentence: The cat sleeps on the warm windowsill.
+
+    Only return the word and sentence in this format, nothing else."""
+
+    try:
+        response = requests.post(OLLAMA_API_URL,
+            json={
+                'model': 'mistral',
+                'prompt': prompt,
+                'stream': False
+            })
+        
+        if response.status_code == 200:
+            result = response.json()['response'].strip()
+            # Parse the response
+            lines = result.split('\n')
+            if len(lines) >= 2:
+                word = lines[0].replace('word:', '').strip()
+                sentence = lines[1].replace('sentence:', '').strip()
+                # Clean up any extra quotes or periods
+                word = word.strip('"').strip("'").strip()
+                sentence = sentence.strip('"').strip("'").strip()
+                if not sentence.endswith('.'):
+                    sentence += '.'
+                logger.info(f"Ollama generated word: {word} and sentence: {sentence}")
+                return word, sentence
+            else:
+                logger.error("Unexpected response format from Ollama")
+                return None, None
+        else:
+            logger.error(f"Ollama request failed: {response.status_code}")
+            return None, None
+    except Exception as e:
+        logger.exception("Error generating word and sentence with Ollama:")
+        return None, None
+
+# Debug environment variables
+logger.debug("Environment variables:")
+logger.debug(f"OLLAMA_API_URL: {OLLAMA_API_URL}")
+
+# Verify API connection
+try:
+    logger.debug(f"Making test request to {OLLAMA_API_URL}")
+    test_response = requests.post(OLLAMA_API_URL,
+        json={
+            'model': 'mistral',
+            'prompt': 'Test prompt',
+            'stream': False
+        })
+    logger.info(f"API Test Response: {test_response.status_code}")
+    logger.info(f"API Test Response Text: {test_response.text}")
+    if test_response.status_code == 200:
+        logger.info("API connection successful!")
+    else:
+        logger.error(f"API test failed with status {test_response.status_code}")
+except Exception as e:
+    logger.error(f"API test failed with error: {str(e)}")
 
 # Define app states
 class AppState(Enum):
@@ -34,184 +111,133 @@ current_state = AppState.SETUP
 current_english_sentence = None
 session_id = None  # Track the current study session
 
-# Initialize translation pipeline
+# Initialize translation pipelines
 try:
-    translator = pipeline(
+    # English to German translator
+    en_de_translator = pipeline(
         "translation",
         model="Helsinki-NLP/opus-mt-en-de",
         device="cuda" if torch.cuda.is_available() else "cpu"
     )
-    logger.info("Translation model loaded successfully")
+    logger.info("Translation models loaded successfully")
 except Exception as e:
-    logger.error(f"Error loading translation model: {str(e)}")
-    translator = None
-
-# Initialize OCR reader
-try:
-    reader = easyocr.Reader(['de'])  # Initialize for German
-    logger.info("OCR model loaded successfully")
-except Exception as e:
-    logger.error(f"Error loading OCR model: {str(e)}")
-    reader = None
+    logger.error(f"Error loading translation models: {str(e)}")
+    en_de_translator = None
 
 # Set random seed for reproducibility
 set_seed(42)
 
-# Template sentences for different word types
-SENTENCE_TEMPLATES = {
-    "noun": [
-        "Ich sehe {}.",  # I see ...
-        "Das ist {}.",   # This is ...
-        "Hier ist {}.",  # Here is ...
-        "Ich habe {}.",  # I have ...
-    ],
-    "verb": [
-        "Ich {} gerne.",      # I like to ...
-        "Wir {} heute.",      # We ... today
-        "Sie {} auch.",       # She/They ... too
-        "Ich möchte {}.",     # I want to ...
-    ],
-    "adjective": [
-        "Das ist {}.",        # This is ...
-        "Es ist sehr {}.",    # It is very ...
-        "Ich bin {}.",        # I am ...
-        "Das Wetter ist {}.", # The weather is ...
-    ]
-}
-
-def get_word_and_sentence() -> Tuple[str, str]:
-    """Fetch a random word and generate a practice sentence."""
-    global current_sentence, current_state, current_english_sentence, group_id
+def get_word_and_sentence() -> str:
+    """Fetch a random word and generate an English practice sentence."""
+    global current_sentence, current_state, current_english_sentence
     
     try:
-        # We already have a session_id and group_id from the URL parameters
-        if not session_id:
-            return "Error", "No session ID found. Please launch from the main app."
-            
-        if not group_id:
-            return "Error", "No group ID found. Please launch from the main app."
+        logger.debug("Starting get_word_and_sentence function")
         
         # Fetch vocabulary from backend
-        logger.info(f"Fetching words for group_id: {group_id} (type: {type(group_id)})")
-        response = requests.get(
-            "http://localhost:5100/api/study-activities/words",
-            params={"group_id": str(group_id)}  # Convert to string for URL params
-        )
+        logger.info(f"Fetching words for practice")
+        word_type = random.choice(['noun', 'verb', 'adjective'])
+        english_word, english_sentence = get_english_word(word_type)
+        if not english_word:
+            logger.error("Failed to get word and sentence from Ollama")
+            return "Failed to get word and sentence"
         
-        if response.status_code != 200:
-            return "Error", f"Failed to fetch words. Status: {response.status_code}"
+        current_english_sentence = english_sentence
         
-        words = response.json().get('words', [])
-        if not words:
-            return "Error", "No words found in vocabulary"
-        
-        # Select random word
-        word = random.choice(words)
-        german_word = word['german']  # Now includes article if it's a noun
-        word_type = word['word_type'].lower()
-        
-        # Generate a simple sentence using templates
-        templates = SENTENCE_TEMPLATES.get(word_type, SENTENCE_TEMPLATES['noun'])
-        template = random.choice(templates)
-        
-        # For nouns, the article is already included in german_word
-        sentence = template.format(german_word)
-        
-        # Store the current sentence for evaluation
-        current_sentence = sentence
-        
-        # Translate the sentence to English for reference
-        if translator:
-            translation = translator(sentence, max_length=50)[0]['translation_text']
-            current_english_sentence = translation
+        # Get the German translation for evaluation
+        if en_de_translator:
+            logger.debug(f"Translating English sentence to German: {english_sentence}")
+            translation_result = en_de_translator(english_sentence, max_length=50)[0]
+            german_translation = translation_result['translation_text']
+            current_sentence = german_translation
+            logger.info(f"English sentence translated to German: {german_translation}")
         else:
-            translation = "Translation model not available"
-            current_english_sentence = translation
+            logger.error("English to German translator not available")
+            current_sentence = "Translation model not available"
         
         # Update state to practice
         current_state = AppState.PRACTICE
         
-        output = f"English: {translation}"  # Only show English sentence as per specs
-        return "", output  # Clear word display, show only English sentence
+        return english_sentence
         
     except Exception as e:
-        logger.error(f"Error: {str(e)}")
-        return "Error", str(e)
+        logger.exception("Error in get_word_and_sentence:")
+        return f"Error: {str(e)}"
 
 def calculate_similarity(text1: str, text2: str) -> float:
     """Calculate similarity between two texts."""
     return SequenceMatcher(None, text1.lower(), text2.lower()).ratio()
 
-def evaluate_handwriting(image_path) -> Tuple[str, str]:
-    """Evaluate the handwritten text using OCR."""
+def evaluate_translation(user_translation: str) -> str:
+    """Evaluate the user's German translation."""
     global current_sentence, current_state
+    
     try:
-        if not reader:
-            return "Error", "OCR model not available"
+        logger.debug("Starting translation evaluation")
         
         if not current_sentence:
-            return "Error", "Please generate a new sentence first"
+            logger.error("No current sentence available for evaluation")
+            return "Please generate a new sentence first"
         
-        # Debug image format
-        logger.info(f"Image path type: {type(image_path)}")
+        if not user_translation:
+            logger.error("No user translation provided")
+            return "Please enter your translation"
         
-        # Check if we have a valid image path
-        if not image_path:
-            return "Error", "No image provided"
+        logger.info(f"Evaluating translation:")
+        logger.info(f"Expected German: {current_sentence}")
+        logger.info(f"User's German:  {user_translation}")
         
-        # Since we set type="filepath", we get the path directly
-        logger.info(f"Processing image from path: {image_path}")
-        
-        # Perform OCR directly on the file path
-        results = reader.readtext(image_path)
-        
-        if not results:
-            return "Error", "No text detected in the image"
-        
-        # Extract text from OCR results
-        detected_text = ' '.join([result[1] for result in results])
-        logger.info(f"Detected text: {detected_text}")
-        
-        # Get literal translation of detected text
-        if translator:
-            detected_translation = translator(detected_text, max_length=50)[0]['translation_text']
-        else:
-            detected_translation = "Translation not available"
-        
-        # Calculate similarity score and determine grade
-        similarity = calculate_similarity(detected_text, current_sentence)
+        # Calculate similarity score
+        similarity = calculate_similarity(user_translation, current_sentence)
         score = int(similarity * 100)
+        logger.info(f"Similarity score: {score}%")
         
+        # Get literal translation of user's text for comparison
+        if en_de_translator:
+            logger.debug(f"Translating user's German text to English")
+            translation_result = en_de_translator(user_translation, max_length=50)[0]
+            user_translation_in_english = translation_result['translation_text']
+            logger.info(f"User's translation in English: {user_translation_in_english}")
+        else:
+            logger.error("Translation model not available for user's text")
+            user_translation_in_english = "Translation not available"
+        
+        # Determine grade and feedback
         if score >= 90:
             grade = "A"
-            feedback = "Excellent! Your sentence is very accurate."
+            feedback = "Excellent! Your translation is very accurate."
         elif score >= 80:
             grade = "B"
             feedback = "Good job! Just a few minor differences."
         elif score >= 60:
             grade = "C"
-            feedback = "Keep practicing! Pay attention to spelling and umlauts."
+            feedback = "Keep practicing! Pay attention to grammar and word choice."
         else:
             grade = "D"
-            feedback = "Try again. Make sure to write clearly and check your spelling."
+            feedback = "Try again. Make sure to check your German grammar and vocabulary."
+        
+        logger.info(f"Grade: {grade}")
         
         # Update state to review
         current_state = AppState.REVIEW
         
-        feedback_text = f"""Transcript: {detected_text}
-Translation: {detected_translation}
+        feedback_text = f"""Your translation: {user_translation}
+Correct German: {current_sentence}
+Your translation in English: {user_translation_in_english}
+Correct English: {current_english_sentence}
 
+Score: {score}%
 Grade: {grade}
 {feedback}"""
         
-        return grade, feedback_text
+        return feedback_text
         
     except Exception as e:
-        logger.error(f"Error evaluating handwriting: {str(e)}")
-        return "F", f"Error processing handwriting: {str(e)}"
+        logger.exception("Error in translation evaluation:")
+        return f"Error evaluating translation: {str(e)}"
 
 # Create Gradio interface
-with gr.Blocks(title="German Writing Practice") as demo:
+with gr.Blocks(title="German Translation Practice") as demo:
     # Get session_id and group_id from URL parameters
     session_id = gr.State(value=None)
     group_id = gr.State(value=None)
@@ -247,10 +273,9 @@ with gr.Blocks(title="German Writing Practice") as demo:
     
     # Create welcome message
     welcome_msg = gr.Markdown("""
-    # Welcome to German Writing Practice
+    # Welcome to German Translation Practice
     
-    Please launch this app from the main application.
-    If you arrived here directly, go back and click the 'Launch' button.
+    Practice translating English sentences to German! Click 'New Sentence' to get started.
     """, visible=True)
     
     # Load session and hide welcome message if successful
@@ -265,110 +290,90 @@ with gr.Blocks(title="German Writing Practice") as demo:
         outputs=[welcome_msg]
     )
     
-    gr.Markdown("# German Writing Practice")
+    gr.Markdown("# German Translation Practice")
     
-    # Create state-dependent components
+    # Create interface elements
     with gr.Row():
-        word_display = gr.Textbox(label="Word to Practice", visible=False)
-        sentence_display = gr.Textbox(label="English Sentence", lines=3)
-    
-    with gr.Row():
-        with gr.Column():
-            canvas = gr.Image(
-                type="filepath",  # Accept uploaded files
-                label="Upload your handwritten German sentence",
-                height=200,
-                width=400,
-                sources=["upload"]  # Only allow uploads, no webcam or sketching
-            )
-            submit_btn = gr.Button("Submit for Review")
+        english_sentence = gr.Text(label="English Sentence", interactive=False)
     
     with gr.Row():
-        grade_display = gr.Textbox(label="Grade")
-        feedback_display = gr.Textbox(label="Feedback", lines=4)
+        user_translation = gr.Text(
+            label="Your German Translation",
+            placeholder="Type your German translation here...",
+            interactive=True
+        )
     
     with gr.Row():
-        new_word_btn = gr.Button("Generate Sentence")
-        next_btn = gr.Button("Next Question", visible=False)
+        feedback_display = gr.Text(
+            label="Feedback",
+            interactive=False,
+            max_lines=10
+        )
+    
+    with gr.Row():
+        new_sentence_btn = gr.Button("New Sentence")
+        submit_btn = gr.Button("Check Translation", variant="primary")
     
     # Set up event handlers
     def on_new_question():
         """Reset the interface for a new question."""
-        # Create a fresh Image component
-        new_canvas = gr.Image(
-            type="filepath",
-            label="Upload your handwritten German sentence",
-            height=200,
-            width=400,
-            sources=["upload"],
-            visible=True,
-            interactive=True
-        )
         return [
-            "",  # grade
-            "",  # feedback
-            new_canvas,  # new upload component
-            gr.update(visible=False),  # hide next button
-            new_canvas  # update canvas again
+            "",  # user_translation
+            ""   # feedback_display
         ]
     
     def on_submit():
         """Update interface after submission."""
-        new_canvas = gr.Image(
-            type="filepath",
-            label="Upload your handwritten German sentence",
-            height=200,
-            width=400,
-            sources=["upload"],
-            visible=True,
-            interactive=True
-        )
         return [
-            gr.update(visible=True),  # show next button
-            new_canvas  # new upload component
+            gr.update(interactive=False),  # submit_btn
+            gr.update(interactive=True)     # new_sentence_btn
         ]
     
-    new_word_btn.click(
+    new_sentence_btn.click(
         fn=get_word_and_sentence,
         inputs=[],  # No inputs needed since we use global group_id
-        outputs=[word_display, sentence_display]
+        outputs=[english_sentence]
     ).then(
-        fn=on_new_question,
-        outputs=[grade_display, feedback_display, canvas, next_btn, canvas]
-    )
-    
-    next_btn.click(
-        fn=get_word_and_sentence,
-        outputs=[word_display, sentence_display]
-    ).then(
-        fn=on_new_question,
-        outputs=[grade_display, feedback_display, canvas, next_btn, canvas]
+        fn=lambda: [
+            gr.update(interactive=True),  # submit_btn
+            gr.update(interactive=False),  # new_sentence_btn
+            "",  # user_translation
+            ""   # feedback_display
+        ],
+        outputs=[
+            submit_btn,
+            new_sentence_btn,
+            user_translation,
+            feedback_display
+        ]
     )
     
     submit_btn.click(
-        fn=evaluate_handwriting,
-        inputs=[canvas],
-        outputs=[grade_display, feedback_display]
+        fn=evaluate_translation,
+        inputs=[user_translation],
+        outputs=[feedback_display]
     ).then(
         fn=on_submit,
-        outputs=[next_btn, canvas]
+        outputs=[
+            submit_btn,
+            new_sentence_btn
+        ]
     )
 
-if __name__ == '__main__':
-    # Disable analytics and telemetry
-    import os
-    os.environ['GRADIO_ANALYTICS_ENABLED'] = 'False'
-    demo.queue()
-    # Launch on a fixed port for consistency
-    demo.launch(
-        server_name='0.0.0.0',  # Listen on all ports
-        server_port=7860,  # Use Gradio's default port to avoid conflicts
-        share=False,  # Disable public sharing
-        prevent_thread_lock=False,  # Keep the main thread alive
-        show_error=True,
-        debug=True
-    )
-    print("\nGradio app running at: http://localhost:7860")
+def test_ollama_integration():
+    """Test Ollama integration with different word types."""
+    word_types = ['noun', 'verb', 'adjective']
     
-    # Keep the app running
-    demo.block_thread()
+    print("Testing Ollama integration...")
+    for word_type in word_types:
+        print(f"\nTesting with {word_type}:")
+        word, sentence = get_english_word(word_type)
+        if word and sentence:
+            print(f"Word: {word}")
+            print(f"Sentence: {sentence}")
+        else:
+            print(f"Failed to get {word_type}")
+
+if __name__ == "__main__":
+    test_ollama_integration()
+    demo.launch()
