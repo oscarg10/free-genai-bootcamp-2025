@@ -25,20 +25,21 @@ def init_db():
                 with open(schema_path) as f:
                     cursor.executescript(f.read())
                 
-                # Clear existing study activities
+                # Clean up old activities
                 cursor.execute("DELETE FROM study_activities")
                 
-                # Insert initial study activities
+                # Insert initial study activities if they don't exist
                 cursor.execute("""
-                    INSERT INTO study_activities (id, name, url, preview_url) VALUES 
-                    (1, 'Typing Tutor', 'http://localhost:8080', '/assets/study_activities/typing-tutor.png'),
-                    (2, 'Writing Practice', 'http://localhost:8080/writing', '/assets/study_activities/writing-practice.png'),
-                    (3, 'Song Vocabulary', 'http://localhost:8000', '/assets/study_activities/song-vocab.png')
+                    INSERT OR IGNORE INTO study_activities (id, name, url, preview_url) VALUES 
+                    (1, 'Writing Practice', 'http://localhost:8080/writing', '/assets/study_activities/writing-practice.png'),
+                    (2, 'Song Vocabulary', 'http://localhost:8000', '/assets/study_activities/song-vocab.png'),
+                    (3, 'Word Memorization', 'http://localhost:7861', '/assets/study_activities/word-memorization-preview.png'),
+                    (4, 'Listening Practice', 'http://localhost:8501', '/assets/study_activities/listening-practice.png')
                 """)
                 
                 # Insert initial groups
                 cursor.execute("""
-                    INSERT INTO groups (name) VALUES 
+                    INSERT OR IGNORE INTO groups (name) VALUES 
                     ('Beginner German'),
                     ('Intermediate German'),
                     ('Advanced German')
