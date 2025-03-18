@@ -42,8 +42,10 @@ def proxy_to_song_vocab(method, endpoint, json=None, params=None):
 
 def get_activity_type(url: str) -> str:
     """Determine activity type based on URL pattern."""
-    if 'localhost:7860' in url:
+    if 'localhost:8080/writing' in url:
         return 'writing'
+    elif 'localhost:7861' in url:
+        return 'memorization'
     elif 'localhost:8000' in url:
         return 'song'
     elif 'localhost:8501' in url:
@@ -71,6 +73,28 @@ def update_activity_url(app, activity_name: str, new_url: str):
             cursor.close()
 
 def load(app):
+    with app.app_context():
+        # Add Word Memorization activity if it doesn't exist
+        with app.db as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT id FROM study_activities WHERE name = ?",
+                ("Word Memorization",)
+            )
+            if not cursor.fetchone():
+                cursor.execute(
+                    """
+                    INSERT INTO study_activities (name, url, preview_url)
+                    VALUES (?, ?, ?)
+                    """,
+                    (
+                        "Word Memorization",
+                        "http://localhost:7861",  # Gradio app URL
+                        "/static/img/word-memorization-preview.png"
+                    )
+                )
+                conn.commit()
+                logger.info("Added Word Memorization study activity")
 
     @app.route('/api/debug/db', methods=['GET'])
     @cross_origin()
@@ -210,11 +234,22 @@ def load(app):
                 return jsonify({'error': 'Activity not found'}), 404
 
             activity_type = get_activity_type(activity['url'])
+            
+            # Get group_id from query parameters
+            group_id = request.args.get('group_id', 1)
+            
+            # Append query parameters to launch URL for word memorization and writing activities
+            base_url = activity['url']
+            if activity_type in ['writing', 'memorization']:
+                launch_url = f"{base_url}?activity_id={activity['id']}&group_id={group_id}"
+            else:
+                launch_url = base_url
+            
             response = {
                 'activity': {
                     'id': activity['id'],
                     'title': activity['name'],
-                    'launch_url': activity['url'],
+                    'launch_url': launch_url,
                     'preview_url': activity['preview_url'],
                     'activity_type': activity_type
                 }
