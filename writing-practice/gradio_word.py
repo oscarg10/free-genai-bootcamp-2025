@@ -1,5 +1,6 @@
 # Disable HuggingFace telemetry
 import os
+import sys
 os.environ['HF_HUB_DISABLE_TELEMETRY'] = '1'
 os.environ['GRADIO_ANALYTICS_ENABLED'] = 'False'
 
@@ -20,11 +21,16 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # API configuration
-OLLAMA_API_URL = 'http://localhost:11434/api/generate'
-
-# API configuration
 OLLAMA_API_URL = os.getenv('OLLAMA_API_URL', 'http://localhost:11434/api/generate')
 LANG_PORTAL_URL = os.getenv('LANG_PORTAL_URL', 'http://localhost:5000')
+LANG_PORTAL_DB = os.getenv('LANG_PORTAL_DB', '../lang-portal/data/lang_portal.db')
+
+# Import database
+sys.path.append(os.path.join(os.path.dirname(__file__), '../lang-portal/backend-flask'))
+from lib.db import Db
+
+# Initialize database
+db = Db(f'sqlite:///{LANG_PORTAL_DB}')
 
 # Define app states
 class AppState(Enum):
@@ -41,10 +47,11 @@ current_translation = None
 current_state = AppState.SETUP
 current_session_id = None
 current_word_id = None
+current_word_type = None
 
 def create_session() -> int:
     """Create a new study session."""
-    global activity_id, group_id
+    global activity_id, group_id, current_session_id
     if not activity_id or not group_id:
         logger.error("Missing activity_id or group_id")
         return None
@@ -58,7 +65,10 @@ def create_session() -> int:
             }
         )
         if response.status_code == 201:
-            return response.json().get("session_id")
+            session_id = response.json().get("session_id")
+            current_session_id = session_id
+            logger.info(f"Created new session with ID: {session_id}")
+            return session_id
     except Exception as e:
         logger.error(f"Error creating session: {str(e)}")
     return None
@@ -80,8 +90,10 @@ def submit_review(word_id: int, correct: bool, session_id: int) -> bool:
 
 def get_german_word() -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """Get a German word and its English translation using Ollama."""
+    global current_word_type
     word_types = ['noun', 'verb', 'adjective']
     word_type = random.choice(word_types)
+    current_word_type = word_type
     
     prompt = f"""You are a German language teacher. Generate ONE {word_type} in German with its English translation.
     Requirements:
@@ -120,7 +132,7 @@ def get_german_word() -> Tuple[Optional[str], Optional[str], Optional[str]]:
                 english = english.strip('"').strip("'").strip()
                 
                 # Detect word type from the German word
-                detected_type = word_type  # Use the type we requested
+                detected_type = word_type
                 if german.startswith(('der ', 'die ', 'das ')):
                     detected_type = 'noun'
                 elif german.endswith('en'):
@@ -160,6 +172,20 @@ def evaluate_translation(user_translation: str) -> str:
             feedback += "Correct! Perfect translation!"
         else:
             feedback += "Incorrect. Try again!"
+            
+            # Store incorrect word in practice_words table
+            if current_session_id:
+                try:
+                    with db.get() as conn:
+                        db.add_practice_word(
+                            session_id=current_session_id,
+                            german_word=german_word,
+                            english_translation=correct_translation,
+                            word_type=current_word_type
+                        )
+                        logger.info(f"Stored incorrect word: {german_word}")
+                except Exception as e:
+                    logger.error(f"Failed to store incorrect word: {e}")
         
         return feedback
     except Exception as e:
@@ -172,7 +198,7 @@ def on_submit(translation: str):
         return "", "Please enter a translation"
     
     feedback = evaluate_translation(translation)
-    return "", feedback  # Return empty string for input and feedback for display
+    return "", feedback
 
 def on_new_word():
     """Get a new word and reset the interface."""
@@ -207,7 +233,13 @@ def load_session(request: gr.Request):
             logger.error(f"Invalid activity_id or group_id: {e}")
             return None, None
 
-        logger.info(f"Loading session for activity {activity_id} and group {group_id}")
+        # Create a new session
+        session_id = create_session()
+        if not session_id:
+            logger.error("Failed to create session")
+            return None, None
+
+        logger.info(f"Created session {session_id} for activity {activity_id} and group {group_id}")
         return activity_id, group_id
     except Exception as e:
         logger.error(f"Error loading session: {str(e)}")

@@ -88,6 +88,12 @@ class Db:
     cursor.execute(self.sql('setup/create_table_study_sessions.sql'))
     self.get().commit()
 
+    cursor.execute(self.sql('setup/create_table_practice_words.sql'))
+    self.get().commit()
+
+    cursor.execute(self.sql('setup/create_index_practice_words.sql'))
+    self.get().commit()
+
   def import_study_activities_json(self,cursor,data_json_path):
     study_activities = self.load_json(data_json_path)
     # Clear existing activities
@@ -151,6 +157,54 @@ class Db:
       self.get().commit()
 
       print(f"Successfully added {len(words)} words to the '{group_name}' group.")
+
+  def add_practice_word(self, session_id: int, german_word: str, english_translation: str, word_type: str) -> bool:
+    """Add or update a practice word when user makes a mistake."""
+    try:
+      cursor = self.cursor()
+      # Check if word exists for this session
+      cursor.execute("""
+        SELECT id, times_incorrect FROM practice_words 
+        WHERE session_id = ? AND german_word = ? AND english_translation = ?
+      """, (session_id, german_word, english_translation))
+      
+      existing = cursor.fetchone()
+      if existing:
+        # Update times_incorrect counter
+        cursor.execute("""
+          UPDATE practice_words 
+          SET times_incorrect = times_incorrect + 1
+          WHERE id = ?
+        """, (existing[0],))
+      else:
+        # Insert new word
+        cursor.execute("""
+          INSERT INTO practice_words (
+            session_id, german_word, english_translation, word_type
+          ) VALUES (?, ?, ?, ?)
+        """, (session_id, german_word, english_translation, word_type))
+      
+      self.commit()
+      return True
+    except Exception as e:
+      self.rollback()
+      print(f"Error adding practice word: {e}")
+      return False
+
+  def get_practice_words(self, session_id: int) -> list:
+    """Get all practice words for a session."""
+    try:
+      cursor = self.cursor()
+      cursor.execute("""
+        SELECT german_word, english_translation, word_type, times_incorrect, created_at
+        FROM practice_words
+        WHERE session_id = ?
+        ORDER BY times_incorrect DESC, created_at DESC
+      """, (session_id,))
+      return cursor.fetchall()
+    except Exception as e:
+      print(f"Error getting practice words: {e}")
+      return []
 
   # Initialize the database with sample data
   def init(self, app):

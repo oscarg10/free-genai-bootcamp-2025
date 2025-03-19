@@ -535,3 +535,24 @@ def load(app):
         except Exception as e:
             logger.error(f"Error in process_song: {str(e)}")
             return jsonify({'error': str(e)}), 500
+
+    @app.route('/api/practice-words/<int:session_id>')
+    def get_practice_words(session_id):
+        """Get practice words for a session."""
+        try:
+            words = app.db.get_practice_words(session_id)
+            return jsonify({
+                'status': 'success',
+                'data': [{
+                    'german': word[0],
+                    'english': word[1],
+                    'type': word[2],
+                    'times_incorrect': word[3],
+                    'created_at': word[4]
+                } for word in words]
+            })
+        except Exception as e:
+            return jsonify({
+                'status': 'error',
+                'message': str(e)
+            }), 500
