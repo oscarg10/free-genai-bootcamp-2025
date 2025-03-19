@@ -52,3 +52,31 @@ CREATE INDEX IF NOT EXISTS idx_vocabulary_session ON vocabulary(session_id);
 CREATE INDEX IF NOT EXISTS idx_vocabulary_song ON vocabulary(song_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_group ON study_sessions(group_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_activity ON study_sessions(study_activity_id);
+
+-- Create word review items table
+CREATE TABLE IF NOT EXISTS word_review_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    study_session_id INTEGER NOT NULL,
+    word_id INTEGER,
+    correct BOOLEAN NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (study_session_id) REFERENCES study_sessions(id)
+);
+
+-- Create index for word reviews
+CREATE INDEX IF NOT EXISTS idx_word_reviews_session ON word_review_items(study_session_id);
+
+-- Create practice words table
+CREATE TABLE IF NOT EXISTS practice_words (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER,
+    german_word TEXT NOT NULL,
+    english_translation TEXT NOT NULL,
+    word_type TEXT NOT NULL,
+    times_incorrect INTEGER DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (session_id) REFERENCES study_sessions(id)
+);
+
+-- Create index for practice words
+CREATE INDEX IF NOT EXISTS idx_practice_words_session ON practice_words(session_id);
