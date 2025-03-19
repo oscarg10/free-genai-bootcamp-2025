@@ -78,19 +78,25 @@ def submit_review(word_id: int, correct: bool, session_id: int) -> bool:
         logger.error(f"Error submitting review: {str(e)}")
         return False
 
-def get_german_word() -> Tuple[Optional[str], Optional[str]]:
+def get_german_word() -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """Get a German word and its English translation using Ollama."""
-    prompt = """Generate a common German word suitable for language learning.
-    The word should be:
-    1. Easy to understand
-    2. Common in everyday use
-    3. Basic vocabulary level
+    word_types = ['noun', 'verb', 'adjective']
+    word_type = random.choice(word_types)
     
-    Format your response exactly like this example:
-    german: Katze
-    english: cat
+    prompt = f"""You are a German language teacher. Generate ONE {word_type} in German with its English translation.
+    Requirements:
+    1. Common word useful for beginners (A1-A2 level)
+    2. Must be different from previous words
+    3. Must be a single word (not a phrase)
     
-    Only return the word pair in this format, nothing else."""
+    Format rules:
+    - For nouns: Include the article (der/die/das)
+    - For verbs: Use the infinitive form
+    - For adjectives: Use the basic form
+    
+    Respond EXACTLY in this format (no other text):
+    german: die Katze
+    english: cat"""
 
     try:
         response = requests.post(OLLAMA_API_URL,
@@ -102,6 +108,8 @@ def get_german_word() -> Tuple[Optional[str], Optional[str]]:
         
         if response.status_code == 200:
             result = response.json()['response'].strip()
+            # Debug: Print raw response
+            logger.debug(f"Raw Ollama response:\n{result}")
             # Parse the response
             lines = result.split('\n')
             if len(lines) >= 2:
@@ -110,94 +118,70 @@ def get_german_word() -> Tuple[Optional[str], Optional[str]]:
                 # Clean up any extra quotes
                 german = german.strip('"').strip("'").strip()
                 english = english.strip('"').strip("'").strip()
-                logger.info(f"Ollama generated word pair: {german} ({english})")
-                return german, english
+                
+                # Detect word type from the German word
+                detected_type = word_type  # Use the type we requested
+                if german.startswith(('der ', 'die ', 'das ')):
+                    detected_type = 'noun'
+                elif german.endswith('en'):
+                    detected_type = 'verb'
+                else:
+                    detected_type = 'adjective'
+                
+                logger.info(f"Generated {detected_type}: {german} ({english})")
+                return german, english, detected_type
             else:
                 logger.error("Unexpected response format from Ollama")
-                return None, None
+                return None, None, None
         else:
             logger.error(f"Ollama request failed: {response.status_code}")
-            return None, None
+            return None, None, None
     except Exception as e:
-        logger.exception("Error generating word with Ollama:")
-        return None, None
+        logger.error(f"Error generating word with Ollama: {str(e)}")
+        return None, None, None
 
-def evaluate_translation(user_translation: str) -> Tuple[bool, str]:
+def evaluate_translation(user_translation: str) -> str:
     """Evaluate the user's translation."""
-    global current_word, current_translation, current_state, current_session_id, current_word_id
-    
-    if not current_word or not current_translation:
-        return False, "Please generate a new word first"
-    
-    # Calculate similarity with the correct translation
-    similarity = SequenceMatcher(None, user_translation.lower(), current_translation.lower()).ratio()
-    is_correct = similarity >= 0.8
-    
-    # Get feedback from Ollama
-    prompt = f"""Evaluate this German-English translation:
-    German word: {current_word}
-    Correct translation: {current_translation}
-    User's translation: {user_translation}
-    Similarity score: {similarity:.2f}
-
-    Give brief, encouraging feedback in 1-2 sentences. If there are mistakes, explain what's wrong.
-    Be friendly but professional."""
-
     try:
-        response = requests.post(OLLAMA_API_URL,
-            json={
-                'model': 'mistral',
-                'prompt': prompt,
-                'stream': False
-            })
+        if not current_word:
+            return "No word to translate. Click 'New Word' to start."
         
-        if response.status_code == 200:
-            feedback = response.json()['response'].strip()
-            feedback = feedback.strip('"').strip("'").strip()
+        german_word, correct_translation = current_word
+        user_translation = user_translation.strip().lower()
+        correct_translation = correct_translation.strip().lower()
+        
+        # Exact match required
+        is_correct = user_translation == correct_translation
+        
+        feedback = f"Your translation: {user_translation}\n"
+        feedback += f"Correct translation: {correct_translation}\n\n"
+        
+        if is_correct:
+            feedback += "Correct! Perfect translation!"
         else:
-            feedback = "Correct!" if is_correct else f"Not quite. The correct translation is: {current_translation}"
+            feedback += "Incorrect. Try again!"
+        
+        return feedback
     except Exception as e:
-        logger.error(f"Error getting feedback from Ollama: {str(e)}")
-        feedback = "Correct!" if is_correct else f"Not quite. The correct translation is: {current_translation}"
-    
-    # Submit the result to the backend if we have a session ID
-    if current_session_id and current_word_id:
-        if submit_review(current_word_id, is_correct, current_session_id):
-            feedback += "\nResult saved successfully"
-        else:
-            feedback += "\nWarning: Could not save result"
-    
-    current_state = AppState.REVIEW
-    return is_correct, feedback
-
-def on_new_word():
-    """Reset the interface for a new word."""
-    global current_word, current_translation, current_session_id, current_state
-    
-    # Create a new session if we don't have one
-    if not current_session_id:
-        current_session_id = create_session()
-        if not current_session_id:
-            return ["Error: Could not create session", "", gr.update(interactive=False), ""]
-    
-    # Get a new word from Ollama
-    word, translation = get_german_word()
-    if not word or not translation:
-        return ["Error: Could not generate word", "", gr.update(interactive=False), ""]
-    
-    current_word = word
-    current_translation = translation
-    current_state = AppState.PRACTICE
-    
-    return [word, "", gr.update(interactive=True), ""]
+        logger.error(f"Error evaluating translation: {str(e)}")
+        return f"Error evaluating translation: {str(e)}"
 
 def on_submit(translation: str):
     """Handle translation submission."""
     if not translation:
-        return [gr.update(interactive=True), "Please enter a translation"]
+        return "", "Please enter a translation"
     
-    is_correct, feedback = evaluate_translation(translation)
-    return [gr.update(interactive=True), feedback]
+    feedback = evaluate_translation(translation)
+    return "", feedback  # Return empty string for input and feedback for display
+
+def on_new_word():
+    """Get a new word and reset the interface."""
+    global current_word
+    word, translation, word_type = get_german_word()
+    if word and translation:
+        current_word = (word, translation)
+        return gr.update(value=f"{word} ({word_type})"), gr.update(value=""), ""
+    return gr.update(value="Error getting word"), gr.update(value=""), "Could not get a new word. Please try again."
 
 def load_session(request: gr.Request):
     """Load session from URL parameters."""
@@ -232,8 +216,8 @@ def load_session(request: gr.Request):
 def on_session_load(activity_id, group_id):
     """Handle session loading."""
     if activity_id and group_id:
-        word, translation = get_german_word()
-        return [word, "", gr.update(interactive=True), ""]
+        word, translation, word_type = get_german_word()
+        return [f"{word} ({word_type})", "", gr.update(interactive=True), ""]
     return ["Please launch from the main portal", "", gr.update(interactive=False), ""]
 
 # Create Gradio interface
@@ -315,23 +299,6 @@ with gr.Blocks(title="German Word Translation Practice") as demo:
             submit_btn = gr.Button("Check Translation", variant="primary")
     
     # Event handlers
-    def on_new_word():
-        """Get a new word and reset the interface."""
-        word, translation = get_german_word()
-        if word and translation:
-            global current_word
-            current_word = (word, translation)
-            return [
-                word,           # word_display
-                "",            # translation_input
-                ""             # feedback_display
-            ]
-        return [
-            "Error getting word",
-            "",
-            "Could not get a new word. Please try again."
-        ]
-    
     new_word_btn.click(
         fn=on_new_word,
         outputs=[
@@ -342,18 +309,26 @@ with gr.Blocks(title="German Word Translation Practice") as demo:
     )
     
     submit_btn.click(
-        fn=evaluate_translation,
+        fn=on_submit,
         inputs=[translation_input],
-        outputs=[feedback_display]
+        outputs=[translation_input, feedback_display]
+    )
+    
+    # Also submit on Enter key
+    translation_input.submit(
+        fn=on_submit,
+        inputs=[translation_input],
+        outputs=[translation_input, feedback_display]
     )
 
 def test_ollama_integration():
     """Test Ollama integration for word generation."""
     print("Testing Ollama word generation...")
-    word, translation = get_german_word()
+    word, translation, word_type = get_german_word()
     if word and translation:
         print(f"Generated word: {word}")
         print(f"Translation: {translation}")
+        print(f"Word type: {word_type}")
     else:
         print("Failed to generate word")
 
