@@ -23,9 +23,7 @@ logger = logging.getLogger(__name__)
 # API configuration
 OLLAMA_API_URL = os.getenv('OLLAMA_API_URL', 'http://localhost:11434/api/generate')
 LANG_PORTAL_URL = os.getenv('LANG_PORTAL_URL', 'http://localhost:5100')
-LANG_PORTAL_DB = os.getenv('LANG_PORTAL_DB', os.path.abspath(os.path.join(os.path.dirname(__file__), '../lang-portal/data/lang_portal.db')))
-
-# Import database
+# Set up Flask app and database
 sys.path.append(os.path.join(os.path.dirname(__file__), '../lang-portal/backend-flask'))
 from lib.db import Db
 from flask import Flask
@@ -33,9 +31,15 @@ from flask import Flask
 # Initialize Flask app
 app = Flask(__name__)
 
+# Set up database path
+LANG_PORTAL_DB = os.getenv('LANG_PORTAL_DB', os.path.join(os.path.dirname(os.path.dirname(__file__)), 'lang-portal/backend-flask/data/lang_portal.db'))
+
 # Initialize database
 db = Db(f'sqlite:///{LANG_PORTAL_DB}')
 app.db = db
+
+# Push an application context
+app.app_context().push()
 
 # Define app states
 class AppState(Enum):
