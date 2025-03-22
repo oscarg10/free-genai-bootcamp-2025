@@ -78,17 +78,4 @@ CREATE TABLE IF NOT EXISTS word_review_items (
 -- Create index for word reviews
 CREATE INDEX IF NOT EXISTS idx_word_reviews_session ON word_review_items(study_session_id);
 
--- Create practice words table
-CREATE TABLE IF NOT EXISTS practice_words (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_id INTEGER,
-    german_word TEXT NOT NULL,
-    english_translation TEXT NOT NULL,
-    word_type TEXT NOT NULL,
-    times_incorrect INTEGER DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (session_id) REFERENCES study_sessions(id)
-);
 
--- Create index for practice words
-CREATE INDEX IF NOT EXISTS idx_practice_words_session ON practice_words(session_id);
