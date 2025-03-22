@@ -44,14 +44,11 @@ def get_activity_type(url: str) -> str:
     """Determine activity type based on URL pattern."""
     if 'localhost:8080/writing' in url:
         return 'writing'
-    elif 'localhost:7861' in url:
+    elif 'localhost:7860' in url:
         return 'memorization'
     elif 'localhost:8000' in url:
         return 'song'
-    elif 'localhost:8501' in url:
-        return 'listening'
-    else:
-        return 'typing'
+    return 'unknown'
 
 def update_activity_url(app, activity_name: str, new_url: str):
     """Update the URL of a study activity using proper SQLite3 practices."""
@@ -89,12 +86,24 @@ def load(app):
                     """,
                     (
                         "Word Memorization",
-                        "http://localhost:7861",  # Gradio app URL
+                        "http://localhost:7860",  # Gradio app URL
                         "/static/img/word-memorization-preview.png"
                     )
                 )
                 conn.commit()
                 logger.info("Added Word Memorization study activity")
+            else:
+                # Update existing Word Memorization activity to use port 7860
+                cursor.execute(
+                    """
+                    UPDATE study_activities 
+                    SET url = ? 
+                    WHERE name = ?
+                    """,
+                    ("http://localhost:7860", "Word Memorization")
+                )
+                conn.commit()
+                logger.info("Updated Word Memorization URL to port 7860")
 
     @app.route('/api/debug/db', methods=['GET'])
     @cross_origin()
@@ -235,7 +244,7 @@ def load(app):
 
             activity_type = get_activity_type(activity['url'])
             
-            # Get group_id from query parameters
+            # Get group_id from query parameters, default to 1 for memorization
             group_id = request.args.get('group_id', 1)
             
             # Append query parameters to launch URL for word memorization and writing activities
@@ -255,15 +264,6 @@ def load(app):
                 }
             }
             
-            # Only fetch groups for typing activity
-            if activity_type == 'typing':
-                cursor.execute('SELECT id, name FROM groups')
-                groups = cursor.fetchall()
-                response['groups'] = [{
-                    'id': group['id'],
-                    'name': group['name']
-                } for group in groups]
-        
             return jsonify(response)
         except Exception as e:
             return jsonify({'error': str(e)}), 500

@@ -2,6 +2,15 @@ import sqlite3
 import json
 from flask import g
 import os
+import logging
+
+  # Setup logging
+logging.basicConfig(
+      level=logging.DEBUG,
+      format='%(asctime)s - %(levelname)s - %(message)s',
+      datefmt='%Y-%m-%d %H:%M:%S'
+  )
+logger = logging.getLogger(__name__)
 
 class Db:
   def __init__(self, database_url='sqlite:///data/lang_portal.db'):
@@ -17,6 +26,24 @@ class Db:
     if data_dir and not os.path.exists(data_dir):
       os.makedirs(data_dir)
 
+  def add_practice_word(self, session_id: int, german_word: str, english_translation: str, word_type: str):
+    """Add a word to the practice_words table."""
+    try:
+        logger.info(f"Adding practice word: {german_word} ({english_translation}) for session {session_id}")
+        cursor = self.cursor()
+        cursor.execute("""
+            INSERT INTO practice_words (session_id, german_word, english_translation, word_type)
+            VALUES (?, ?, ?, ?)
+        """, (session_id, german_word, english_translation, word_type))
+        logger.debug(f"SQL query executed with params: {(session_id, german_word, english_translation, word_type)}")
+        self.commit()
+        last_id = cursor.lastrowid
+        logger.info(f"Successfully added practice word with ID: {last_id}")
+        return last_id
+    except Exception as e:
+        logger.error(f"Failed to add practice word: {str(e)}")
+        self.rollback()
+        raise e
   def get(self):
     if 'db' not in g:
       # Ensure we're using an absolute path
@@ -157,39 +184,6 @@ class Db:
       self.get().commit()
 
       print(f"Successfully added {len(words)} words to the '{group_name}' group.")
-
-  def add_practice_word(self, session_id: int, german_word: str, english_translation: str, word_type: str) -> bool:
-    """Add or update a practice word when user makes a mistake."""
-    try:
-      cursor = self.cursor()
-      # Check if word exists for this session
-      cursor.execute("""
-        SELECT id, times_incorrect FROM practice_words 
-        WHERE session_id = ? AND german_word = ? AND english_translation = ?
-      """, (session_id, german_word, english_translation))
-      
-      existing = cursor.fetchone()
-      if existing:
-        # Update times_incorrect counter
-        cursor.execute("""
-          UPDATE practice_words 
-          SET times_incorrect = times_incorrect + 1
-          WHERE id = ?
-        """, (existing[0],))
-      else:
-        # Insert new word
-        cursor.execute("""
-          INSERT INTO practice_words (
-            session_id, german_word, english_translation, word_type
-          ) VALUES (?, ?, ?, ?)
-        """, (session_id, german_word, english_translation, word_type))
-      
-      self.commit()
-      return True
-    except Exception as e:
-      self.rollback()
-      print(f"Error adding practice word: {e}")
-      return False
 
   def get_practice_words(self, session_id: int) -> list:
     """Get all practice words for a session."""

@@ -21,19 +21,17 @@ def init_db():
                 conn.execute("BEGIN TRANSACTION")
                 
                 # Read and execute schema
-                schema_path = Path("sql/setup/schema.sql")
+                schema_path = Path("data/schema.sql")
                 with open(schema_path) as f:
                     cursor.executescript(f.read())
                 
-                # Clean up old activities
-                cursor.execute("DELETE FROM study_activities")
                 
                 # Insert initial study activities if they don't exist
                 cursor.execute("""
                     INSERT OR IGNORE INTO study_activities (id, name, url, preview_url) VALUES 
                     (1, 'Writing Practice', 'http://localhost:8080/writing', '/assets/study_activities/writing-practice.png'),
                     (2, 'Song Vocabulary', 'http://localhost:8000', '/assets/study_activities/song-vocab.png'),
-                    (3, 'Word Memorization', 'http://localhost:7861', '/assets/study_activities/word-memorization-preview.png'),
+                    (3, 'Word Memorization', 'http://localhost:7860', '/assets/study_activities/word-memorization-preview.png'),
                     (4, 'Listening Practice', 'http://localhost:8501', '/assets/study_activities/listening-practice.png')
                 """)
                 
