@@ -5,7 +5,7 @@ import math
 
 def load(app):
     # Endpoint: GET /words with pagination and filtering
-    @app.route('/words', methods=['GET'])
+    @app.route('/api/words', methods=['GET'])
     @cross_origin()
     def get_words():
         try:
@@ -164,7 +164,7 @@ def load(app):
             }, 500)
 
     # Create a new word
-    @app.route('/words', methods=['POST'])
+    @app.route('/api/words', methods=['POST'])
     @cross_origin()
     def create_word():
         try:
@@ -247,7 +247,7 @@ def load(app):
             }, 500)
 
     # Get word by ID
-    @app.route('/words/<int:word_id>', methods=['GET'])
+    @app.route('/api/words/<int:word_id>', methods=['GET'])
     @cross_origin()
     def get_word(word_id):
         try:

@@ -3,6 +3,7 @@ import json
 from flask import g
 import os
 import logging
+from threading import local
 
   # Setup logging
 logging.basicConfig(
@@ -19,68 +20,162 @@ class Db:
       self.database = database_url[10:]  # Remove 'sqlite:///'
     else:
       self.database = database_url
-    self.connection = None
+    self._local = local()  # Thread-local storage
     
     # Create data directory if it doesn't exist
     data_dir = os.path.dirname(self.database)
     if data_dir and not os.path.exists(data_dir):
       os.makedirs(data_dir)
 
-  def add_practice_word(self, session_id: int, german_word: str, english_translation: str, word_type: str):
-    """Add a word to the practice_words table."""
+  @property
+  def connection(self):
+    """Get thread-local connection."""
+    return getattr(self._local, 'connection', None)
+
+  @connection.setter
+  def connection(self, value):
+    """Set thread-local connection."""
+    self._local.connection = value
+
+  def connect(self):
+    """Create a database connection."""
+    if self.connection is None:
+      self.connection = sqlite3.connect(self.database)
+      self.connection.row_factory = sqlite3.Row  # Enable dictionary-like access to rows
+      # Enable foreign key support
+      self.connection.execute('PRAGMA foreign_keys = ON')
+    return self.connection
+
+  def cursor(self):
+    """Get a cursor from the database connection."""
+    return self.connect().cursor()
+
+  def commit(self):
+    """Commit the current transaction."""
+    if self.connection:
+      self.connection.commit()
+
+  def rollback(self):
+    """Rollback the current transaction."""
+    if self.connection:
+      self.connection.rollback()
+
+  def close(self):
+    """Close the database connection."""
+    if self.connection:
+      self.connection.close()
+      self.connection = None
+
+  def __enter__(self):
+    """Context manager entry.
+    Returns self so that we can use both self.execute() and self.cursor()
+    """
+    self.connect()  # Ensure connection is established
+    return self
+
+  def __exit__(self, exc_type, exc_val, exc_tb):
+    """Context manager exit."""
+    if exc_type is not None:
+      # An error occurred, rollback
+      self.rollback()
+    self.close()
+
+  def execute(self, sql, parameters=()):
+    """Execute SQL directly on the connection."""
+    return self.connect().execute(sql, parameters)
+
+  def add_practice_word(self, session_id: int, german_word: str, english_translation: str, word_type: str, word_groups: list[str] = None):
+    """Add a word to the practice_words table and optionally assign it to word groups."""
     try:
         logger.info(f"Adding practice word: {german_word} ({english_translation}) for session {session_id}")
         cursor = self.cursor()
+        
+        # Begin transaction
+        cursor.execute('BEGIN TRANSACTION')
+        
+        # Insert the word
         cursor.execute("""
             INSERT INTO practice_words (session_id, german_word, english_translation, word_type)
             VALUES (?, ?, ?, ?)
         """, (session_id, german_word, english_translation, word_type))
+        word_id = cursor.lastrowid
         logger.debug(f"SQL query executed with params: {(session_id, german_word, english_translation, word_type)}")
+        
+        # If word groups are specified, assign the word to them
+        if word_groups:
+            for group_name in word_groups:
+                # Get or create the word group
+                cursor.execute("""
+                    SELECT id FROM word_groups WHERE name = ?
+                """, (group_name,))
+                result = cursor.fetchone()
+                if result:
+                    group_id = result[0]
+                else:
+                    # Create new group if it doesn't exist
+                    cursor.execute("""
+                        INSERT INTO word_groups (name) VALUES (?)
+                    """, (group_name,))
+                    group_id = cursor.lastrowid
+                
+                # Assign word to group
+                cursor.execute("""
+                    INSERT OR IGNORE INTO word_group_assignments (word_id, group_id)
+                    VALUES (?, ?)
+                """, (word_id, group_id))
+        
         self.commit()
-        last_id = cursor.lastrowid
-        logger.info(f"Successfully added practice word with ID: {last_id}")
-        return last_id
+        logger.info(f"Successfully added practice word with ID: {word_id}")
+        return word_id
     except Exception as e:
         logger.error(f"Failed to add practice word: {str(e)}")
         self.rollback()
         raise e
-  def get(self):
-    if 'db' not in g:
-      # Ensure we're using an absolute path
-      db_path = os.path.abspath(self.database)
-      g.db = sqlite3.connect(db_path)
-      g.db.row_factory = sqlite3.Row  # Return rows as dictionaries
-      # Enable foreign key support
-      g.db.execute('PRAGMA foreign_keys = ON')
-    return g.db
+        
+  def get_word_groups(self):
+    """Get all word groups."""
+    try:
+        cursor = self.cursor()
+        cursor.execute("""
+            SELECT id, name, description, created_at
+            FROM word_groups
+            ORDER BY name
+        """)
+        return cursor.fetchall()
+    except Exception as e:
+        logger.error(f"Failed to get word groups: {str(e)}")
+        raise e
+        
+  def get_words_in_group(self, group_id: int):
+    """Get all words in a specific word group."""
+    try:
+        cursor = self.cursor()
+        cursor.execute("""
+            SELECT pw.*
+            FROM practice_words pw
+            JOIN word_group_assignments wga ON pw.id = wga.word_id
+            WHERE wga.group_id = ?
+            ORDER BY pw.created_at DESC
+        """, (group_id,))
+        return cursor.fetchall()
+    except Exception as e:
+        logger.error(f"Failed to get words in group: {str(e)}")
+        raise e
 
-  def __enter__(self):
-    return self.get()
-
-  def __exit__(self, exc_type, exc_val, exc_tb):
-    if exc_type is not None:
-      # An error occurred, rollback
-      self.get().rollback()
-    self.close()
-
-  def commit(self):
-    self.get().commit()
-
-  def rollback(self):
-    self.get().rollback()
-
-  def begin_transaction(self):
-    self.get().execute('BEGIN TRANSACTION')
-
-  def cursor(self):
-    # Ensure the connection is valid before getting a cursor
-    connection = self.get()
-    return connection.cursor()
-
-  def close(self):
-    db = g.pop('db', None)
-    if db is not None:
-      db.close()
+  def get_practice_words(self, session_id: int) -> list:
+    """Get all practice words for a session."""
+    try:
+      cursor = self.cursor()
+      cursor.execute("""
+        SELECT german_word, english_translation, word_type, times_incorrect, created_at
+        FROM practice_words
+        WHERE session_id = ?
+        ORDER BY times_incorrect DESC, created_at DESC
+      """, (session_id,))
+      return cursor.fetchall()
+    except Exception as e:
+      print(f"Error getting practice words: {e}")
+      return []
 
   # Function to load SQL from a file
   def sql(self, filepath):
@@ -95,31 +190,31 @@ class Db:
   def setup_tables(self,cursor):
     # Create the necessary tables
     cursor.execute(self.sql('setup/create_table_words.sql'))
-    self.get().commit()
+    self.commit()
 
     cursor.execute(self.sql('setup/create_table_word_reviews.sql'))
-    self.get().commit()
+    self.commit()
 
     cursor.execute(self.sql('setup/create_table_word_review_items.sql'))
-    self.get().commit()
+    self.commit()
 
     cursor.execute(self.sql('setup/create_table_groups.sql'))
-    self.get().commit()
+    self.commit()
 
     cursor.execute(self.sql('setup/create_table_word_groups.sql'))
-    self.get().commit()
+    self.commit()
 
     cursor.execute(self.sql('setup/create_table_study_activities.sql'))
-    self.get().commit()
+    self.commit()
 
     cursor.execute(self.sql('setup/create_table_study_sessions.sql'))
-    self.get().commit()
+    self.commit()
 
     cursor.execute(self.sql('setup/create_table_practice_words.sql'))
-    self.get().commit()
+    self.commit()
 
     cursor.execute(self.sql('setup/create_index_practice_words.sql'))
-    self.get().commit()
+    self.commit()
 
   def import_study_activities_json(self,cursor,data_json_path):
     study_activities = self.load_json(data_json_path)
@@ -129,7 +224,7 @@ class Db:
       cursor.execute('''
       INSERT INTO study_activities (name,url,preview_url) VALUES (?,?,?)
       ''', (activity['name'],activity['url'],activity['preview_url']))
-    self.get().commit()
+    self.commit()
     print(f"Successfully imported {len(study_activities)} study activities")
 
   def import_word_json(self,cursor,group_name,data_json_path):
@@ -137,7 +232,7 @@ class Db:
       cursor.execute('''
         INSERT INTO groups (name) VALUES (?)
       ''', (group_name,))
-      self.get().commit()
+      self.commit()
 
       # Get the ID of the group
       cursor.execute('SELECT id FROM groups WHERE name = ?', (group_name,))
@@ -170,7 +265,7 @@ class Db:
         cursor.execute('''
           INSERT INTO word_groups (word_id, group_id) VALUES (?, ?)
         ''', (word_id, group_id))
-      self.get().commit()
+      self.commit()
 
       # Update the words_count in the groups table
       cursor.execute('''
@@ -181,24 +276,9 @@ class Db:
         WHERE id = ?
       ''', (group_id, group_id))
 
-      self.get().commit()
+      self.commit()
 
       print(f"Successfully added {len(words)} words to the '{group_name}' group.")
-
-  def get_practice_words(self, session_id: int) -> list:
-    """Get all practice words for a session."""
-    try:
-      cursor = self.cursor()
-      cursor.execute("""
-        SELECT german_word, english_translation, word_type, times_incorrect, created_at
-        FROM practice_words
-        WHERE session_id = ?
-        ORDER BY times_incorrect DESC, created_at DESC
-      """, (session_id,))
-      return cursor.fetchall()
-    except Exception as e:
-      print(f"Error getting practice words: {e}")
-      return []
 
   # Initialize the database with sample data
   def init(self, app):

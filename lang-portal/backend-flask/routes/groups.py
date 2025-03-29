@@ -1,9 +1,13 @@
 from flask import request, jsonify, g
 from flask_cors import cross_origin
 import json
+import sqlite3
+import logging
+
+logger = logging.getLogger(__name__)
 
 def load(app):
-  @app.route('/groups', methods=['GET'])
+  @app.route('/api/groups', methods=['GET'])
   @cross_origin()
   def get_groups():
     try:
@@ -26,28 +30,35 @@ def load(app):
         order = 'asc'
 
       # Query to fetch groups with sorting and the cached word count
-      cursor.execute(f'''
+      query = '''
         SELECT id, name, words_count
         FROM groups
-        ORDER BY {sort_by} {order}
+        ORDER BY {} {}
         LIMIT ? OFFSET ?
-      ''', (groups_per_page, offset))
+      '''.format(
+        'name' if sort_by == 'name' else 'words_count',
+        'ASC' if order.upper() == 'ASC' else 'DESC'
+      )
+      
+      try:
+        # Query groups
+        cursor.execute(query, (groups_per_page, offset))
+        groups = [dict(row) for row in cursor.fetchall()]
 
-      groups = cursor.fetchall()
-
-      # Query the total number of groups
-      cursor.execute('SELECT COUNT(*) FROM groups')
-      total_groups = cursor.fetchone()[0]
-      total_pages = (total_groups + groups_per_page - 1) // groups_per_page
+        # Query total count
+        cursor.execute('SELECT COUNT(*) FROM groups')
+        total_groups = cursor.fetchone()[0]
+        total_pages = (total_groups + groups_per_page - 1) // groups_per_page
+      except sqlite3.Error as e:
+        logger.error(f'Database error: {e}')
+        return jsonify({'error': 'Database error occurred'}), 500
 
       # Format the response
-      groups_data = []
-      for group in groups:
-        groups_data.append({
-          "id": group["id"],
-          "group_name": group["name"],
-          "word_count": group["words_count"]
-        })
+      groups_data = [{
+        "id": group["id"],
+        "group_name": group["name"],
+        "word_count": group["words_count"]
+      } for group in groups]
 
       # Return groups and pagination metadata
       return jsonify({
@@ -58,7 +69,7 @@ def load(app):
     except Exception as e:
       return jsonify({"error": str(e)}), 500
 
-  @app.route('/groups', methods=['POST'])
+  @app.route('/api/groups', methods=['POST'])
   @cross_origin()
   def create_group():
     try:
@@ -99,7 +110,7 @@ def load(app):
       app.db.rollback()
       return jsonify({"error": str(e)}), 500
 
-  @app.route('/groups/<int:id>', methods=['GET'])
+  @app.route('/api/groups/<int:id>', methods=['GET'])
   @cross_origin()
   def get_group(id):
     try:
@@ -124,7 +135,7 @@ def load(app):
     except Exception as e:
       return jsonify({"error": str(e)}), 500
 
-  @app.route('/groups/<int:id>/words', methods=['GET'])
+  @app.route('/api/groups/<int:id>/words', methods=['GET'])
   @cross_origin()
   def get_group_words(id):
     try:
@@ -197,9 +208,9 @@ def load(app):
     except Exception as e:
       return jsonify({"error": str(e)}), 500
 
-  # todo GET /groups/:id/words/raw
+  # todo GET /api/groups/:id/words/raw
 
-  @app.route('/groups/<int:id>/study_sessions', methods=['GET'])
+  @app.route('/api/groups/<int:id>/study_sessions', methods=['GET'])
   @cross_origin()
   def get_group_study_sessions(id):
     try:
