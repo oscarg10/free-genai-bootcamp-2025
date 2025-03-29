@@ -10,6 +10,7 @@ import routes.groups
 import routes.study_sessions
 import routes.dashboard
 import routes.study_activities
+import routes.word_groups
 
 # Load environment variables
 load_dotenv()

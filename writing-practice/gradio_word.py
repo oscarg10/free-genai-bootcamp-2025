@@ -189,11 +189,36 @@ def evaluate_translation(user_translation: str, session_id: int) -> str:
                 try:
                     with app.app_context():
                         with db.get() as conn:
+                            # Determine word groups based on type and meaning
+                            word_groups = ['Basic Vocabulary']  # Always add to basic vocabulary
+                            
+                            # Add to type-specific groups
+                            if current_word_type == 'noun':
+                                # Try to categorize nouns based on meaning
+                                if any(word in correct_translation.lower() for word in ['food', 'drink', 'meal', 'eat']):
+                                    word_groups.append('Food & Drink')
+                                elif any(word in correct_translation.lower() for word in ['mother', 'father', 'sister', 'brother', 'aunt', 'uncle']):
+                                    word_groups.append('Family')
+                                elif any(word in correct_translation.lower() for word in ['doctor', 'teacher', 'engineer', 'worker']):
+                                    word_groups.append('Professions')
+                                elif any(word in correct_translation.lower() for word in ['head', 'arm', 'leg', 'body', 'health']):
+                                    word_groups.append('Body & Health')
+                            elif current_word_type == 'adjective':
+                                # Categorize adjectives
+                                if any(word in correct_translation.lower() for word in ['red', 'blue', 'green', 'yellow', 'round', 'square']):
+                                    word_groups.append('Colors & Shapes')
+                                elif any(word in correct_translation.lower() for word in ['happy', 'sad', 'angry', 'excited']):
+                                    word_groups.append('Emotions')
+                                elif any(word in correct_translation.lower() for word in ['hot', 'cold', 'warm', 'sunny', 'rainy']):
+                                    word_groups.append('Weather')
+                            
+                            # Add the word with its groups
                             db.add_practice_word(
                                 session_id=session_id,
                                 german_word=german_word,
                                 english_translation=correct_translation,
-                                word_type=current_word_type
+                                word_type=current_word_type,
+                                word_groups=word_groups
                             )
                         logger.info(f"Successfully stored incorrect word: {german_word}")
                 except Exception as e:
@@ -390,6 +415,18 @@ def test_ollama_integration():
         print(f"Word type: {word_type}")
     else:
         print("Failed to generate word")
+
+def get_word_groups():
+    """Get all available word groups."""
+    with app.app_context():
+        with db.get() as conn:
+            return db.get_word_groups()
+
+def get_words_in_group(group_id: int):
+    """Get all words in a specific word group."""
+    with app.app_context():
+        with db.get() as conn:
+            return db.get_words_in_group(group_id)
 
 if __name__ == "__main__":
     test_ollama_integration()
