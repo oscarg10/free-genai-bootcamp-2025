@@ -24,7 +24,14 @@
 
 .memory-card.matched {
   cursor: default;
-  opacity: 0.5;
+  opacity: 0.8;
+  background-color: #48bb78;
+  transform: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.memory-card.matched .card-content {
+  color: white;
 }
 
 .card-content {

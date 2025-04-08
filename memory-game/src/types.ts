@@ -13,6 +13,7 @@ export interface GameState {
   cards: Card[];
   flippedCards: Card[];
   score: number;
+  tries: number;
   difficulty: Difficulty;
   gameStarted: boolean;
 }

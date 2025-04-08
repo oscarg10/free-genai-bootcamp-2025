@@ -38,6 +38,7 @@ export const Game = () => {
     cards: [],
     flippedCards: [],
     score: 0,
+    tries: 0,
     difficulty: 'easy',
     gameStarted: false
   });
@@ -48,6 +49,7 @@ export const Game = () => {
       cards: createCards(prev.difficulty),
       flippedCards: [],
       score: 0,
+      tries: 0,
       gameStarted: true
     }));
   };
@@ -84,7 +86,8 @@ export const Game = () => {
           ...prev,
           cards: newCards,
           flippedCards: [],
-          score: isMatch ? prev.score + 1 : prev.score
+          score: isMatch ? prev.score + 1 : prev.score,
+          tries: prev.tries + 1
         }));
       }, 1000);
     }
@@ -123,7 +126,10 @@ export const Game = () => {
 
       {gameState.gameStarted && (
         <div className="game-board">
-          <div className="score">Score: {gameState.score}</div>
+          <div className="stats">
+            <div className="score">Score: {gameState.score}</div>
+            <div className="tries">Tries: {gameState.tries}</div>
+          </div>
           <div className={`card-grid difficulty-${gameState.difficulty}`}>
             {gameState.cards.map(card => (
               <Card
@@ -140,6 +146,7 @@ export const Game = () => {
         <div className="game-complete">
           <h2>Congratulations!</h2>
           <p>You've completed the game with a score of {gameState.score}!</p>
+          <p>Total tries: {gameState.tries}</p>
         </div>
       )}
     </div>
