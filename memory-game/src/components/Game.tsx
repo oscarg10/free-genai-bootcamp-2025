@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import './Game.css';
 import { Card } from './Card';
-import { Card as CardType, Difficulty, GameState } from '../types';
-import { words } from '../data/words';
+import { Card as CardType, Difficulty, GameState, Category, WordPair } from '../types';
+import { wordSets } from '../data/wordSets';
+import { LearningAssistant } from './LearningAssistant';
 
-const createCards = (difficulty: Difficulty): CardType[] => {
-  const selectedWords = words[difficulty];
+const createCards = (difficulty: Difficulty, category: Category = 'general'): CardType[] => {
+  const selectedWords = wordSets[category].words
+    .filter(word => word.difficulty === difficulty)
+    .map(word => ({ german: word.german, english: word.english }));
   const shuffledWords = [...selectedWords].sort(() => Math.random() - 0.5);
   const cards: CardType[] = [];
 
@@ -34,6 +37,9 @@ const createCards = (difficulty: Difficulty): CardType[] => {
 };
 
 export const Game = () => {
+  const [selectedCategory, setSelectedCategory] = useState<Category>('general');
+  const [currentWord, setCurrentWord] = useState<WordPair | undefined>();
+  
   const [gameState, setGameState] = useState<GameState>({
     cards: [],
     flippedCards: [],
@@ -46,7 +52,7 @@ export const Game = () => {
   const startGame = () => {
     setGameState(prev => ({
       ...prev,
-      cards: createCards(prev.difficulty),
+      cards: createCards(prev.difficulty, selectedCategory),
       flippedCards: [],
       score: 0,
       tries: 0,
@@ -55,6 +61,13 @@ export const Game = () => {
   };
 
   const handleCardClick = (card: CardType) => {
+    // Update current word for Learning Assistant
+    const wordPair = wordSets[selectedCategory].words.find(
+      w => w.german === card.word || w.english === card.word
+    );
+    if (wordPair) {
+      setCurrentWord(wordPair);
+    }
     if (card.isMatched || card.isFlipped || gameState.flippedCards.length >= 2) return;
 
     const newCards = gameState.cards.map(c =>
@@ -112,6 +125,17 @@ export const Game = () => {
       
       <div className="game-controls">
         <select
+          value={selectedCategory}
+          onChange={(e) => setSelectedCategory(e.target.value as Category)}
+          className="category-select"
+        >
+          <option value="general">General</option>
+          <option value="cooking">Cooking</option>
+          <option value="travel">Travel</option>
+          <option value="business">Business</option>
+          <option value="technology">Technology</option>
+        </select>
+        <select
           value={gameState.difficulty}
           onChange={handleDifficultyChange}
         >
@@ -141,6 +165,7 @@ export const Game = () => {
           </div>
         </div>
       )}
+      <LearningAssistant currentCard={currentWord} />
 
       {isGameComplete && (
         <div className="game-complete">
