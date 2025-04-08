@@ -16,39 +16,76 @@ const openai = new OpenAI({
 app.use(cors());
 app.use(express.json());
 
-// Helper function to create a chat prompt
-const createChatPrompt = (context: string, question: string): Array<OpenAI.Chat.ChatCompletionMessageParam> => {
-    return [
-        {
-            role: "system",
-            content: `You are a helpful German language tutor. You help students learn German words and phrases.
-                     Current context: ${context}`
-        },
-        {
-            role: "user",
-            content: question
-        }
+interface ConversationContext {
+    currentWord?: {
+        german: string;
+        english: string;
+        examples: string[];
+        difficulty: string;
+        category: string;
+    };
+    messageHistory: Array<{ role: 'user' | 'assistant'; content: string }>;
+}
+
+// Helper function to create a chat prompt with enhanced context
+const createChatPrompt = (context: ConversationContext, question: string): Array<OpenAI.Chat.ChatCompletionMessageParam> => {
+    const systemPrompt = `You are a knowledgeable German language learning assistant. Help users learn German vocabulary and grammar.
+
+Your capabilities:
+- Explain German words, their usage, and grammar
+- Provide pronunciation tips using phonetic notation
+- Give examples of words in different contexts
+- Explain grammar rules related to the words
+- Remember conversation context and previous examples
+
+Current word context:
+${context.currentWord ? 
+    `- Word: ${context.currentWord.german}
+- Meaning: ${context.currentWord.english}
+- Category: ${context.currentWord.category}
+- Difficulty: ${context.currentWord.difficulty}
+- Example usage:
+  ${context.currentWord.examples.map(ex => `  * ${ex}`).join('\n')}` 
+    : 'No specific word is currently being studied.'}`;
+
+    const messages: Array<OpenAI.Chat.ChatCompletionMessageParam> = [
+        { role: "system", content: systemPrompt },
+        ...context.messageHistory,
+        { role: "user", content: question }
     ];
+
+    return messages;
 };
 
 // Endpoint for chat responses
 app.post('/api/chat', async (req: express.Request, res: express.Response) => {
     try {
-        const { question, currentWord } = req.body;
-        
-        const messages = createChatPrompt(
-            `The current word being learned is "${currentWord.german}" which means "${currentWord.english}" in English.`,
-            question
-        );
+        const { question, currentWord, messageHistory = [] } = req.body;
+
+        const context: ConversationContext = {
+            currentWord,
+            messageHistory
+        };
 
         const completion = await openai.chat.completions.create({
-            model: "gpt-3.5-turbo",
-            messages,
-            max_tokens: 150,
+            model: "gpt-3.5-turbo-1106",
+            messages: createChatPrompt(context, question),
+            max_tokens: 300,
             temperature: 0.7,
+            presence_penalty: 0.6, // Encourage diverse responses
+            frequency_penalty: 0.3  // Reduce repetition
         });
 
-        res.json({ response: completion.choices[0].message.content });
+        const response = completion.choices[0].message.content;
+
+        res.json({ 
+            response,
+            messageHistory: [
+                ...messageHistory,
+                { role: 'user', content: question },
+                { role: 'assistant', content: response }
+            ]
+        });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).json({ error: 'Failed to get response from AI' });

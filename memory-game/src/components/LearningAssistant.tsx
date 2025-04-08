@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage, WordPair } from '../types';
 import './LearningAssistant.css';
 
@@ -6,15 +6,16 @@ interface LearningAssistantProps {
     currentCard?: WordPair;
 }
 
-export const LearningAssistant = ({ currentCard }: LearningAssistantProps) => {
+export const LearningAssistant: React.FC<LearningAssistantProps> = ({ currentCard }) => {
     const [messages, setMessages] = useState<ChatMessage[]>([
         {
-            text: "Hi! I'm your learning assistant. Ask me about any German word you see, or type 'help' for more options!",
+            text: "Hi Deutsch Student! I'm your German learning assistant. I can help you with:\n- Word meanings and translations\n- Pronunciation tips\n- Grammar explanations\n- Example sentences\n- Usage in different contexts\n\nAsk me anything about German words and grammar!",
             type: 'bot',
             timestamp: Date.now()
         }
     ]);
     const [input, setInput] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
@@ -25,50 +26,64 @@ export const LearningAssistant = ({ currentCard }: LearningAssistantProps) => {
         scrollToBottom();
     }, [messages]);
 
-    const generateResponse = (question: string): string => {
-        const lowerQuestion = question.toLowerCase();
-        
-        if (lowerQuestion === 'help') {
-            return `Here's what you can ask me:
-                   - "How do I use [word]?"
-                   - "Show examples for [word]"
-                   - "What does [word] mean?"`;
-        }
+    const generateResponse = async (question: string): Promise<string> => {
+        try {
+            const response = await fetch('http://localhost:3001/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    question,
+                    currentWord: currentCard,
+                    messageHistory: messages
+                        .slice(-6) // Keep last 6 messages for context
+                        .map(msg => ({
+                            role: msg.type === 'user' ? 'user' : 'assistant',
+                            content: msg.text
+                        }))
+                })
+            });
 
-        if (currentCard) {
-            if (lowerQuestion.includes('use') || lowerQuestion.includes('example')) {
-                return `Here are some examples using "${currentCard.german}":
-                       ${currentCard.examples.join('\\n')}`;
-            }
-            if (lowerQuestion.includes('mean')) {
-                return `"${currentCard.german}" means "${currentCard.english}" in English.`;
-            }
+            if (!response.ok) throw new Error('Failed to get response');
+            const data = await response.json();
+            return data.response;
+        } catch (error) {
+            console.error('Chat error:', error);
+            return 'Sorry, I had trouble understanding that. Could you try rephrasing your question?';
         }
-
-        return "I'm not sure about that. Try asking about the current word you're learning, or type 'help' for options!";
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!input.trim()) return;
+        if (!input.trim() || isLoading) return;
 
         const userMessage: ChatMessage = {
             text: input,
             type: 'user',
             timestamp: Date.now()
         };
-
         setMessages(prev => [...prev, userMessage]);
         setInput('');
+        setIsLoading(true);
 
-        const response = await generateResponse(input);
-        const botMessage: ChatMessage = {
-            text: response,
-            type: 'bot',
-            timestamp: Date.now()
-        };
-
-        setMessages(prev => [...prev, botMessage]);
+        try {
+            const response = await generateResponse(input);
+            const botMessage: ChatMessage = {
+                text: response,
+                type: 'bot',
+                timestamp: Date.now()
+            };
+            setMessages(prev => [...prev, botMessage]);
+        } catch (error) {
+            console.error('Error:', error);
+            const errorMessage: ChatMessage = {
+                text: 'Sorry, I encountered an error. Please try again.',
+                type: 'bot',
+                timestamp: Date.now()
+            };
+            setMessages(prev => [...prev, errorMessage]);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -79,9 +94,16 @@ export const LearningAssistant = ({ currentCard }: LearningAssistantProps) => {
                         key={index}
                         className={`message ${message.type}`}
                     >
-                        {message.text}
+                        {message.text.split('\n').map((line, i) => (
+                            <p key={i}>{line}</p>
+                        ))}
                     </div>
                 ))}
+                {isLoading && (
+                    <div className="message bot">
+                        <p>Thinking...</p>
+                    </div>
+                )}
                 <div ref={messagesEndRef} />
             </div>
             <form onSubmit={handleSubmit} className="chat-input">
@@ -89,9 +111,12 @@ export const LearningAssistant = ({ currentCard }: LearningAssistantProps) => {
                     type="text"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder="Ask about a word..."
+                    placeholder="Ask about German words, grammar, or pronunciation..."
+                    disabled={isLoading}
                 />
-                <button type="submit">Send</button>
+                <button type="submit" disabled={isLoading}>
+                    {isLoading ? '...' : 'Send'}
+                </button>
             </form>
         </div>
     );
