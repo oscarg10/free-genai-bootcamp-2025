@@ -37,4 +37,6 @@ export interface GameState {
   tries: number;
   difficulty: Difficulty;
   gameStarted: boolean;
+  isLoading: boolean;
+  generatedWords: WordPair[];
 }

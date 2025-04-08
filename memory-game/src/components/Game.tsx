@@ -5,9 +5,12 @@ import { Card as CardType, Difficulty, GameState, Category, WordPair } from '../
 import { wordSets } from '../data/wordSets';
 import { LearningAssistant } from './LearningAssistant';
 
-const createCards = (difficulty: Difficulty, category: Category = 'general'): CardType[] => {
+const createCards = (difficulty: Difficulty, category: Category = 'general', generatedWords: WordPair[] = []): CardType[] => {
+  // Use generated words if available, otherwise fall back to word sets
+  const words = generatedWords.length > 0 ? generatedWords : wordSets[category].words;
+  
   // Get words of the selected difficulty
-  const wordsForDifficulty = wordSets[category].words
+  const wordsForDifficulty = words
     .filter(word => word.difficulty === difficulty);
 
   // If we don't have enough words for the selected difficulty, use easier words
@@ -17,14 +20,14 @@ const createCards = (difficulty: Difficulty, category: Category = 'general'): Ca
 
   // Add easier words if needed
   for (let i = 0; i < difficultyIndex && availableWords.length < 4; i++) {
-    const easierWords = wordSets[category].words
+    const easierWords = words
       .filter(word => word.difficulty === difficulties[i]);
     availableWords = [...availableWords, ...easierWords];
   }
 
   // If we still don't have enough words, add harder words
   for (let i = difficultyIndex + 1; i < difficulties.length && availableWords.length < 4; i++) {
-    const harderWords = wordSets[category].words
+    const harderWords = words
       .filter(word => word.difficulty === difficulties[i]);
     availableWords = [...availableWords, ...harderWords];
   }
@@ -71,13 +74,54 @@ export const Game = () => {
     score: 0,
     tries: 0,
     difficulty: 'easy',
-    gameStarted: false
+    gameStarted: false,
+    isLoading: false,
+    generatedWords: []
   });
 
-  const startGame = () => {
+  const generateWords = async () => {
+    setGameState(prev => ({ ...prev, isLoading: true }));
+    try {
+      const response = await fetch('http://localhost:3001/api/generate-words', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category: selectedCategory,
+          difficulty: gameState.difficulty,
+          count: 8 // Get 8 pairs for a good game size
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to generate words');
+      }
+      const words: WordPair[] = await response.json();
+
+      if (!Array.isArray(words) || words.length === 0) {
+        throw new Error('No words generated');
+      }
+
+      setGameState(prev => ({
+        ...prev,
+        generatedWords: words,
+        isLoading: false
+      }));
+
+      return words;
+    } catch (error) {
+      console.error('Error generating words:', error);
+      alert('Failed to generate words. Using word bank instead.');
+      setGameState(prev => ({ ...prev, isLoading: false }));
+      return [];
+    }
+  };
+
+  const startGame = async () => {
+    const words = await generateWords();
     setGameState(prev => ({
       ...prev,
-      cards: createCards(prev.difficulty, selectedCategory),
+      cards: createCards(prev.difficulty, selectedCategory, words),
       flippedCards: [],
       score: 0,
       tries: 0,
@@ -153,6 +197,7 @@ export const Game = () => {
           value={selectedCategory}
           onChange={(e) => setSelectedCategory(e.target.value as Category)}
           className="category-select"
+          disabled={gameState.isLoading}
         >
           <option value="general">General</option>
           <option value="cooking">Cooking</option>
@@ -163,13 +208,18 @@ export const Game = () => {
         <select
           value={gameState.difficulty}
           onChange={handleDifficultyChange}
+          disabled={gameState.isLoading}
         >
           <option value="easy">Easy</option>
           <option value="medium">Medium</option>
           <option value="hard">Hard</option>
         </select>
-        <button onClick={startGame}>
-          {gameState.gameStarted ? 'Restart Game' : 'Start Game'}
+        <button 
+          onClick={startGame}
+          disabled={gameState.isLoading}
+        >
+          {gameState.isLoading ? 'Generating Words...' : 
+           gameState.gameStarted ? 'Restart Game' : 'Start Game'}
         </button>
       </div>
 

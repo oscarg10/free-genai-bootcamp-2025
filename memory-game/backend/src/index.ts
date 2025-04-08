@@ -60,33 +60,89 @@ app.post('/api/generate-words', async (req: express.Request, res: express.Respon
     try {
         const { category, difficulty, count = 5 } = req.body;
 
-        const prompt = `Generate ${count} German-English word pairs for the category "${category}" at ${difficulty} difficulty level.
-                       Format the response as a JSON array of objects with properties:
-                       - german: the German word with article if noun
-                       - english: the English translation
-                       - examples: array of 2 example German sentences using the word
-                       - difficulty: "${difficulty}"
-                       - category: "${category}"`;
+        const prompt = `Generate exactly ${count} German-English word pairs for category "${category}" at ${difficulty} difficulty level.
+
+Respond with a JSON object containing a 'pairs' array. Each object in the array must have:
+- german: German word (include article for nouns)
+- english: English translation
+- examples: Array of 2 German example sentences
+- difficulty: "${difficulty}"
+- category: "${category}"
+
+Example response:
+{
+  "pairs": [
+    {
+      "german": "der Hund",
+      "english": "the dog",
+      "examples": ["Der Hund ist süß.", "Ich habe einen Hund."],
+      "difficulty": "${difficulty}",
+      "category": "${category}"
+    }
+  ]
+}`;
 
         const completion = await openai.chat.completions.create({
-            model: "gpt-3.5-turbo",
+            model: "gpt-3.5-turbo-1106",
             messages: [
                 {
                     role: "system",
-                    content: "You are a German language expert. Provide accurate translations and natural example sentences."
+                    content: "You are a German language expert that generates JSON responses. Always wrap word pairs in a 'pairs' array property."
                 },
                 {
                     role: "user",
                     content: prompt
                 }
             ],
-            max_tokens: 500,
+            max_tokens: 1000,
             temperature: 0.7,
+            response_format: { type: "json_object" }
         });
 
-        // Parse the response and validate it's proper JSON
-        const wordPairs = JSON.parse(completion.choices[0].message.content || '[]');
-        res.json(wordPairs);
+        const content = completion.choices[0].message.content || '{"pairs": []}';
+        console.log('OpenAI Response:', content); // Debug log
+
+        // Parse and validate the response
+        try {
+            const response = JSON.parse(content);
+            
+            // Validate response structure
+            if (!response.pairs || !Array.isArray(response.pairs)) {
+                throw new Error('Invalid response format: missing pairs array');
+            }
+
+            // Define the type for word pairs
+            interface WordPair {
+                german: string;
+                english: string;
+                examples: string[];
+                difficulty: string;
+                category: string;
+            }
+
+            // Validate each word pair
+            const validPairs = response.pairs.filter((pair: any): pair is WordPair => {
+                return pair && 
+                       typeof pair.german === 'string' && 
+                       typeof pair.english === 'string' && 
+                       Array.isArray(pair.examples) && 
+                       pair.examples.length === 2 && 
+                       pair.difficulty === difficulty && 
+                       pair.category === category;
+            });
+
+            if (validPairs.length === 0) {
+                throw new Error('No valid word pairs generated');
+            }
+
+            res.json(validPairs);
+        } catch (error: any) {
+            console.error('Failed to parse JSON:', content);
+            res.status(500).json({ 
+                error: 'Failed to generate valid word pairs',
+                details: error?.message || 'Unknown parsing error'
+            });
+        }
     } catch (error) {
         console.error('Error:', error);
         res.status(500).json({ error: 'Failed to generate word pairs' });
