@@ -6,13 +6,38 @@ import { wordSets } from '../data/wordSets';
 import { LearningAssistant } from './LearningAssistant';
 
 const createCards = (difficulty: Difficulty, category: Category = 'general'): CardType[] => {
-  const selectedWords = wordSets[category].words
-    .filter(word => word.difficulty === difficulty)
+  // Get words of the selected difficulty
+  const wordsForDifficulty = wordSets[category].words
+    .filter(word => word.difficulty === difficulty);
+
+  // If we don't have enough words for the selected difficulty, use easier words
+  const difficulties: Difficulty[] = ['easy', 'medium', 'hard'];
+  const difficultyIndex = difficulties.indexOf(difficulty);
+  let availableWords = [...wordsForDifficulty];
+
+  // Add easier words if needed
+  for (let i = 0; i < difficultyIndex && availableWords.length < 4; i++) {
+    const easierWords = wordSets[category].words
+      .filter(word => word.difficulty === difficulties[i]);
+    availableWords = [...availableWords, ...easierWords];
+  }
+
+  // If we still don't have enough words, add harder words
+  for (let i = difficultyIndex + 1; i < difficulties.length && availableWords.length < 4; i++) {
+    const harderWords = wordSets[category].words
+      .filter(word => word.difficulty === difficulties[i]);
+    availableWords = [...availableWords, ...harderWords];
+  }
+
+  // Shuffle and take up to 8 pairs
+  const selectedWords = availableWords
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 8)
     .map(word => ({ german: word.german, english: word.english }));
-  const shuffledWords = [...selectedWords].sort(() => Math.random() - 0.5);
+
   const cards: CardType[] = [];
 
-  shuffledWords.forEach((pair, index) => {
+  selectedWords.forEach((pair, index) => {
     cards.push(
       {
         id: index * 2,

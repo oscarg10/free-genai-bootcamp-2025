@@ -17,7 +17,7 @@ app.use(cors());
 app.use(express.json());
 
 // Helper function to create a chat prompt
-const createChatPrompt = (context: string, question: string) => {
+const createChatPrompt = (context: string, question: string): Array<OpenAI.Chat.ChatCompletionMessageParam> => {
     return [
         {
             role: "system",
