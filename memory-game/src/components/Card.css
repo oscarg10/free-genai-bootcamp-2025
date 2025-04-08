@@ -1,0 +1,39 @@
+.memory-card {
+  width: 150px;
+  height: 100px;
+  background-color: #edf2f7;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  perspective: 1000px;
+  transform-style: preserve-3d;
+}
+
+.memory-card:hover:not(.matched) {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.memory-card.flipped {
+  background-color: #4299e1;
+  transform: rotateY(180deg);
+}
+
+.memory-card.matched {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.card-content {
+  font-size: 1.25rem;
+  color: #2d3748;
+  backface-visibility: hidden;
+}
+
+.flipped .card-content {
+  color: white;
+  transform: rotateY(180deg);
+}

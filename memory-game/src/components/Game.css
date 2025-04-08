@@ -1,0 +1,65 @@
+.game {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  padding: 1.5rem;
+}
+
+.game-title {
+  font-size: 2rem;
+  font-weight: bold;
+  margin: 0;
+  text-align: center;
+}
+
+.game-controls {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.game-board {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.score {
+  font-size: 1.25rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+.card-grid {
+  display: grid;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.card-grid.difficulty-easy,
+.card-grid.difficulty-medium {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.card-grid.difficulty-hard {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.game-complete {
+  text-align: center;
+  padding: 2rem;
+  background-color: #f0fff4;
+  border-radius: 8px;
+  border: 1px solid #9ae6b4;
+}
+
+.game-complete h2 {
+  color: #2f855a;
+  margin: 0 0 1rem;
+}
+
+.game-complete p {
+  color: #38a169;
+  margin: 0;
+  font-size: 1.1rem;
+}
